@@ -1,0 +1,24 @@
+{
+  "name": "おかね帳",
+  "short_name": "おかね帳",
+  "description": "個人財務記帳工具",
+  "start_url": "/okanesho/",
+  "display": "standalone",
+  "background_color": "#FDF8EF",
+  "theme_color": "#6A8C69",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

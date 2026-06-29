@@ -1,0 +1,2035 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>おかね帳</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="おかね帳">
+<meta name="theme-color" content="#6A8C69">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #F5F3EE;
+  --bg2:       #EDEAE3;
+  --surface:   #FDFCF9;
+  --surface2:  #F0EDE6;
+  --border:    #DDD9CF;
+  --border2:   #C9C4B8;
+  --text:      #2C2A25;
+  --text2:     #6B6455;
+  --text3:     #A89F8C;
+  --matcha:    #6A8C69;
+  --matcha-l:  #EAF0E8;
+  --matcha-m:  #B8CFBA;
+  --sakura:    #D9697A;
+  --sakura-l:  #FAEAEC;
+  --sora:      #6B8FAB;
+  --sora-l:    #E5EEF5;
+  --kinari:    #C8A96E;
+  --kinari-l:  #FBF4E7;
+  --taishin:   #D9697A;
+  --stanChart: #6B8FAB;
+  --lianBang:  #6A8C69;
+  --r:         14px;
+  --r-sm:      9px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: 'Noto Sans TC', -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding-bottom: 84px;
+}
+
+/* ── WASHI TAPE DECORATION ── */
+.washi {
+  height: 5px;
+  background: repeating-linear-gradient(90deg,
+    var(--matcha) 0px, var(--matcha) 12px,
+    var(--matcha-m) 12px, var(--matcha-m) 18px,
+    var(--sakura-l) 18px, var(--sakura-l) 28px,
+    var(--kinari) 28px, var(--kinari) 36px,
+    var(--matcha-l) 36px, var(--matcha-l) 46px
+  );
+  opacity: 0.7;
+}
+
+/* ── TAB BAR ── */
+.tab-bar {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: var(--surface);
+  border-top: 1.5px solid var(--border);
+  display: flex; z-index: 100;
+  padding-bottom: env(safe-area-inset-bottom);
+  box-shadow: 0 -2px 12px rgba(0,0,0,0.06);
+}
+.tab-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  padding: 8px 0 6px; background: none; border: none; cursor: pointer;
+  color: var(--text3); font-size: 10px; gap: 2px;
+  font-family: inherit; letter-spacing: 0.5px; transition: color 0.2s;
+}
+.tab-btn .tab-icon { font-size: 20px; line-height: 1; }
+.tab-btn.active { color: var(--matcha); }
+.tab-btn.active .tab-label { font-weight: 700; }
+
+/* ── PAGES ── */
+.page { display: none; padding-bottom: 20px; }
+.page.active { display: block; }
+
+/* ── HEADER ── */
+.page-header {
+  background: var(--surface);
+  padding: 68px 20px 14px;
+  border-bottom: 1.5px solid var(--border);
+  position: sticky; top: 0; z-index: 50;
+}
+.header-top { display: flex; align-items: flex-end; justify-content: space-between; }
+.page-header h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
+.page-header h1 .emoji { font-size: 22px; margin-right: 4px; }
+.page-header .subtitle { font-size: 12px; color: var(--text3); margin-top: 3px; letter-spacing: 0.3px; }
+.stamp {
+  font-size: 10px; font-weight: 700; letter-spacing: 1px;
+  border: 2px solid var(--matcha); color: var(--matcha);
+  padding: 3px 8px; border-radius: 4px; transform: rotate(-3deg);
+  display: inline-block; opacity: 0.7;
+}
+
+/* ── SECTION LABEL ── */
+.section-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
+  color: var(--text3); text-transform: uppercase;
+  padding: 16px 16px 6px;
+  display: flex; align-items: center; gap: 6px;
+}
+.section-label::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+
+/* ── QUICK ADD CARD ── */
+.add-card {
+  margin: 8px 16px 0;
+  background: var(--surface);
+  border-radius: var(--r);
+  border: 1.5px solid var(--border);
+  overflow: hidden;
+}
+.add-card-header {
+  background: var(--matcha-l);
+  border-bottom: 1.5px solid var(--matcha-m);
+  padding: 10px 14px;
+  display: flex; align-items: center; gap: 6px;
+  font-size: 13px; font-weight: 700; color: var(--matcha);
+  letter-spacing: 0.5px;
+}
+.add-card-body { padding: 14px; }
+
+.field-row { display: flex; gap: 8px; margin-bottom: 10px; }
+.field { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.field-label { font-size: 10px; color: var(--text3); font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; }
+
+input[type="text"], input[type="number"], input[type="date"], select {
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 10px 12px;
+  font-size: 15px; color: var(--text);
+  width: 100%; -webkit-appearance: none; appearance: none;
+  font-family: inherit;
+  transition: border-color 0.15s, background 0.15s;
+}
+input:focus, select:focus {
+  outline: none; border-color: var(--matcha); background: var(--matcha-l);
+}
+
+/* bank pills */
+.bank-pills { display: flex; gap: 6px; }
+.bank-pill {
+  flex: 1; padding: 9px 4px; border-radius: var(--r-sm);
+  border: 1.5px solid var(--border); background: var(--bg);
+  font-size: 13px; font-weight: 700; cursor: pointer;
+  transition: all 0.15s; color: var(--text2); text-align: center;
+  font-family: inherit;
+}
+.bank-pill[data-bank="台新"].active  { border-color: var(--taishin);  background: var(--sakura-l); color: var(--taishin); }
+.bank-pill[data-bank="星展"].active  { border-color: var(--stanChart); background: var(--sora-l);   color: var(--stanChart); }
+.bank-pill[data-bank="聯邦"].active { border-color: var(--lianBang); background: var(--matcha-l); color: var(--lianBang); }
+
+.bank-pill[data-bank="台新"]  .pill-icon { display: block; font-size: 16px; margin-bottom: 2px; }
+.bank-pill[data-bank="星展"]  .pill-icon { display: block; font-size: 16px; margin-bottom: 2px; }
+.bank-pill[data-bank="聯邦"] .pill-icon { display: block; font-size: 16px; margin-bottom: 2px; }
+
+.btn-add {
+  width: 100%; padding: 13px;
+  background: var(--matcha); color: white; border: none;
+  border-radius: var(--r-sm); font-size: 15px; font-weight: 700;
+  cursor: pointer; margin-top: 4px; font-family: inherit;
+  letter-spacing: 0.5px; transition: opacity 0.15s;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.btn-add:active { opacity: 0.8; }
+
+/* ── WEEK BLOCKS ── */
+.week-block {
+  margin: 10px 16px 0;
+  background: var(--surface);
+  border-radius: var(--r);
+  border: 1.5px solid var(--border);
+  overflow: hidden;
+}
+.week-header {
+  padding: 12px 14px;
+  display: flex; justify-content: space-between; align-items: center;
+  background: var(--surface2); border-bottom: 1px solid var(--border);
+}
+.week-left { display: flex; flex-direction: column; gap: 3px; }
+.week-label { font-size: 12px; font-weight: 700; color: var(--text2); letter-spacing: 0.3px; }
+.week-badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 10px; padding: 2px 7px; border-radius: 10px; font-weight: 700;
+  width: fit-content;
+}
+.badge-settled { background: var(--matcha-l); color: var(--matcha); }
+.badge-pending { background: var(--kinari-l); color: var(--kinari); }
+.week-total { font-size: 19px; font-weight: 700; letter-spacing: -0.5px; }
+
+.settle-btn {
+  margin: 0 14px 12px;
+  padding: 10px 14px;
+  border: 1.5px dashed var(--matcha);
+  background: var(--matcha-l); color: var(--matcha);
+  border-radius: var(--r-sm); font-size: 13px; font-weight: 700;
+  cursor: pointer; width: calc(100% - 28px); font-family: inherit;
+  transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.settle-btn:active { background: var(--matcha); color: white; }
+
+/* ── TX ITEMS ── */
+.tx-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+}
+.tx-item:last-child { border-bottom: none; }
+.tx-item.settled { opacity: 0.45; }
+.tx-item.settled .tx-name { text-decoration: line-through; }
+
+.tx-bank-badge {
+  width: 32px; height: 32px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; flex-shrink: 0;
+}
+.tx-info { flex: 1; min-width: 0; }
+.tx-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tx-meta { font-size: 11px; color: var(--text3); margin-top: 1px; }
+.tx-amount { font-size: 15px; font-weight: 700; flex-shrink: 0; }
+.tx-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.tx-btn {
+  width: 28px; height: 28px; border-radius: 7px; border: none;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  font-size: 14px; background: var(--bg2); transition: background 0.15s;
+}
+.tx-btn:active { opacity: 0.7; }
+.tx-btn.del { background: var(--sakura-l); }
+
+/* ── OVERVIEW ── */
+.period-nav {
+  background: var(--surface); border-bottom: 1.5px solid var(--border);
+  display: flex; align-items: center; padding: 10px 16px;
+  position: sticky; top: 89px; z-index: 40;
+  gap: 8px;
+}
+.period-arrow {
+  width: 32px; height: 32px; border-radius: 50%;
+  border: 1.5px solid var(--border); background: var(--surface2);
+  font-size: 16px; cursor: pointer; color: var(--text2);
+  display: flex; align-items: center; justify-content: center;
+}
+.period-text { flex: 1; text-align: center; font-size: 13px; font-weight: 700; color: var(--text2); }
+
+.hero-card {
+  margin: 12px 16px 0;
+  border-radius: var(--r);
+  overflow: hidden;
+  background: linear-gradient(135deg, #5a7a59 0%, #7a9e79 50%, #8aad89 100%);
+  padding: 20px;
+  color: white;
+  position: relative;
+}
+.hero-card::before {
+  content: '🌿';
+  position: absolute; right: 16px; top: 16px;
+  font-size: 40px; opacity: 0.18;
+}
+.hero-label { font-size: 11px; opacity: 0.8; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
+.hero-amount { font-size: 34px; font-weight: 700; letter-spacing: -1px; margin: 4px 0 2px; }
+.hero-period { font-size: 11px; opacity: 0.65; }
+.hero-cols { display: flex; gap: 0; margin-top: 16px; }
+.hero-col { flex: 1; padding: 10px 0; border-right: 1px solid rgba(255,255,255,0.2); text-align: center; }
+.hero-col:last-child { border-right: none; }
+.hero-col-label { font-size: 10px; opacity: 0.7; letter-spacing: 0.5px; }
+.hero-col-val { font-size: 17px; font-weight: 700; margin-top: 2px; }
+
+.ov-card {
+  margin: 10px 16px 0;
+  background: var(--surface); border-radius: var(--r);
+  border: 1.5px solid var(--border); overflow: hidden;
+}
+.ov-card-header {
+  padding: 11px 14px; background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.ov-card-title { font-size: 12px; font-weight: 700; color: var(--text2); letter-spacing: 0.5px; display: flex; align-items: center; gap: 5px; }
+.ov-card-total { font-size: 15px; font-weight: 700; }
+.ov-row {
+  padding: 11px 14px; display: flex; justify-content: space-between; align-items: center;
+  border-bottom: 1px solid var(--border);
+}
+.ov-row:last-child { border-bottom: none; }
+.ov-row-name { font-size: 14px; display: flex; align-items: center; gap: 6px; }
+.ov-row-val { font-size: 14px; font-weight: 700; }
+.val-green { color: var(--matcha); }
+.val-rose  { color: var(--sakura); }
+.val-gold  { color: var(--kinari); }
+.val-blue  { color: var(--sora); }
+
+/* ── SETTINGS ── */
+.set-card {
+  margin: 8px 16px 0;
+  background: var(--surface); border-radius: var(--r);
+  border: 1.5px solid var(--border); overflow: hidden;
+}
+.set-row {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.set-row:last-child { border-bottom: none; }
+.set-row-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 7px; }
+.set-name { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.set-row-bottom { display: flex; align-items: center; gap: 8px; }
+.set-input {
+  flex: 1; text-align: right; font-weight: 700; font-size: 15px;
+  background: var(--bg); border: 1.5px solid var(--border);
+  border-radius: 7px; padding: 8px 12px; font-family: inherit;
+}
+.icon-btn {
+  width: 32px; height: 32px; border-radius: 8px; border: none;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  font-size: 15px; background: var(--bg2); flex-shrink: 0;
+}
+.icon-btn.del { background: var(--sakura-l); }
+/* toggle switch */
+.toggle-wrap { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+.toggle-label { font-size: 10px; color: var(--text3); font-weight: 600; }
+.toggle {
+  position: relative; width: 36px; height: 20px; flex-shrink: 0;
+}
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute; inset: 0; border-radius: 20px;
+  background: var(--border2); cursor: pointer; transition: background 0.2s;
+}
+.toggle-slider::before {
+  content: ''; position: absolute;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: white; top: 3px; left: 3px; transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.toggle input:checked + .toggle-slider { background: var(--matcha); }
+.toggle input:checked + .toggle-slider::before { transform: translateX(16px); }
+.add-row {
+  display: flex; gap: 8px; padding: 12px 14px;
+  border-top: 1.5px dashed var(--border); background: var(--bg);
+}
+.add-row input { flex: 1; }
+.add-row input.w-amt { width: 90px; flex: 0 0 90px; }
+.btn-sm {
+  padding: 9px 14px; border-radius: var(--r-sm); border: none;
+  background: var(--matcha); color: white; font-size: 13px;
+  font-weight: 700; cursor: pointer; white-space: nowrap; font-family: inherit;
+}
+.data-btn {
+  flex: 1; padding: 12px; border-radius: var(--r-sm);
+  background: var(--surface2); border: 1.5px solid var(--border);
+  font-size: 14px; cursor: pointer; font-family: inherit; font-weight: 600;
+  color: var(--text2); display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+
+/* ── MODAL ── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(44,42,37,0.5); z-index: 200;
+  align-items: flex-end; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--surface); border-radius: var(--r) var(--r) 0 0;
+  width: 100%; max-width: 480px;
+  padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
+  animation: slideUp 0.22s ease;
+}
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.modal-handle { width: 36px; height: 4px; background: var(--border2); border-radius: 2px; margin: 0 auto 16px; }
+.modal-title { font-size: 17px; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 6px; }
+.modal-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.modal-field-label { font-size: 10px; color: var(--text3); font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; }
+.modal-actions { display: flex; gap: 8px; margin-top: 14px; }
+.btn-cancel { flex: 1; padding: 13px; border-radius: var(--r-sm); border: 1.5px solid var(--border); background: var(--surface2); font-size: 15px; cursor: pointer; font-family: inherit; }
+.btn-confirm { flex: 1; padding: 13px; border-radius: var(--r-sm); border: none; background: var(--matcha); color: white; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; }
+
+/* ── TOAST ── */
+.toast {
+  position: fixed; bottom: 92px; left: 50%; transform: translateX(-50%);
+  background: var(--text); color: white;
+  padding: 10px 18px; border-radius: 20px;
+  font-size: 13px; font-weight: 600; opacity: 0;
+  transition: opacity 0.2s; pointer-events: none;
+  white-space: nowrap; z-index: 300; display: flex; align-items: center; gap: 6px;
+}
+.toast.show { opacity: 1; }
+
+/* ── EMPTY STATE ── */
+.empty-state { text-align: center; padding: 48px 20px; color: var(--text3); }
+.empty-icon { font-size: 44px; margin-bottom: 10px; }
+.empty-text { font-size: 14px; }
+
+.type-btn {
+  width: 28px; height: 28px; border-radius: 7px; border: 1.5px solid var(--border);
+  background: var(--bg2); cursor: pointer; font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.type-btn.type-active { border-color: var(--matcha); background: var(--matcha-l); }
+
+.card-preset-btn {
+  padding: 6px 12px; border-radius: 16px;
+  border: 1.5px solid var(--border); background: var(--surface2);
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  font-family: inherit; color: var(--text2); transition: all 0.15s;
+}
+.card-preset-btn.active {
+  border-color: var(--matcha); background: var(--matcha-l); color: var(--matcha);
+}
+
+/* ══ 貓咪主題 ══ */
+body.theme-cat {
+  --bg:      #FDF8EF;
+  --bg2:     #F5EDD8;
+  --surface: #FFFFFF;
+  --surface2:#FFF3DC;
+  --border:  #E8D5B0;
+  --text:    #3A2E1E;
+  --text2:   #6B5030;
+  --text3:   #A88A60;
+  --matcha:       #D4782A;
+  --matcha-l:     #FFF0DC;
+  --matcha-m:     #F0C080;
+  --sakura:       #D45A2A;
+  --sakura-l:     #FFE8DC;
+  --sora-l:       #FFF0DC;
+  --kinari:       #C8901A;
+  --kinari-l:     #FFF8DC;
+  --taishin:      #D4782A;
+  --stanChart:    #C8601A;
+  --lianBang:     #D49020;
+}
+body.theme-cat .stamp { border-color: #D4782A; color: #D4782A; }
+body.theme-cat .stamp::after { content: 'NEKO'; }
+body.theme-cat .stamp { font-size: 0; }
+body.theme-cat .stamp::after { font-size: 9px; }
+body.theme-cat .washi {
+  background: repeating-linear-gradient(90deg,
+    #FFCE90 0px, #FFCE90 10px, #FFF0DC 10px, #FFF0DC 18px,
+    #F5C86A 18px, #F5C86A 26px, #FFE4B0 26px, #FFE4B0 36px,
+    #F0D090 36px, #F0D090 46px
+  );
+}
+body.theme-cat .tab-btn.active { color: #D4782A; }
+body.theme-cat .tab-icon-jp { display: none !important; }
+body.theme-cat .tab-icon-cat { display: inline-flex !important; align-items: center; justify-content: center; width: 28px; height: 28px; }
+body.theme-cat .tab-btn .tab-icon-cat svg { width: 100%; height: 100%; display: block; }
+body.theme-cat .empty-icon { font-size: 0; }
+body.theme-cat .page-header h1 .emoji { font-size: 0; }
+body.theme-cat #theme-toggle-label-jp { display: none; }
+body.theme-cat #theme-toggle-label-cat { display: inline; }
+body.theme-cat #card-preset-pills { display: none !important; }
+body.theme-cat #card-cat-pills { display: flex !important; }
+
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+<div id="auth-bar" style="position:fixed;top:0;left:0;right:0;z-index:200;display:flex;justify-content:flex-end;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border-bottom:1px solid var(--border)"></div>
+<div id="sync-status" style="position:fixed;top:34px;right:12px;z-index:199;font-size:11px;color:var(--text3);font-weight:600"></div>
+
+<!-- ══ PAGE: 記帳 ══ -->
+<div class="page active" id="page-record">
+  <div class="page-header">
+    <div class="header-top">
+      <div>
+        <h1><span class="emoji">📒</span>おかね帳</h1>
+        <div class="subtitle" id="record-period-label"></div>
+      </div>
+      <div class="stamp">KAKEIBO</div>
+    </div>
+    <!-- sub tabs -->
+    <div style="display:flex;gap:0;margin-top:12px;border:1.5px solid var(--border);border-radius:9px;overflow:hidden;background:var(--bg2)">
+      <button id="sub-cc" onclick="switchSubTab('cc')" style="flex:1;padding:8px;font-size:13px;font-weight:700;border:none;cursor:pointer;background:var(--matcha);color:white;font-family:inherit">💳 信用卡</button>
+      <button id="sub-cash" onclick="switchSubTab('cash')" style="flex:1;padding:8px;font-size:13px;font-weight:700;border:none;cursor:pointer;background:transparent;color:var(--text2);font-family:inherit">💵 現金</button>
+    </div>
+  </div>
+  <div class="washi"></div>
+
+  <!-- CC section -->
+  <div id="section-cc">
+    <div class="add-card">
+      <div class="add-card-header">✏️ 新增信用卡支出</div>
+      <div class="add-card-body">
+        <div class="field-row">
+          <div class="field" style="flex:2">
+            <div class="field-label">品項</div>
+            <input type="text" id="input-name" placeholder="例：711、Uber Eats">
+          </div>
+          <div class="field" style="flex:1">
+            <div class="field-label">金額</div>
+            <input type="number" id="input-amount" placeholder="0" inputmode="decimal">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <div class="field-label">日期</div>
+            <input type="date" id="input-date">
+          </div>
+        </div>
+        <div style="margin-bottom:12px">
+          <div class="field-label" style="margin-bottom:6px">信用卡</div>
+          <div class="bank-pills" id="add-bank-pills"></div>
+        </div>
+        <button class="btn-add" onclick="addTransaction()">＋ 記一筆</button>
+      </div>
+    </div>
+    <div id="tx-list"></div>
+  </div>
+
+  <!-- Cash section -->
+  <div id="section-cash" style="display:none">
+    <div class="add-card">
+      <div class="add-card-header">✏️ 新增現金支出</div>
+      <div class="add-card-body">
+        <div class="field-row">
+          <div class="field" style="flex:2">
+            <div class="field-label">品項</div>
+            <input type="text" id="cash-name" placeholder="例：早餐、停車費">
+          </div>
+          <div class="field" style="flex:1">
+            <div class="field-label">金額</div>
+            <input type="number" id="cash-amount" placeholder="0" inputmode="decimal">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <div class="field-label">日期</div>
+            <input type="date" id="cash-date">
+          </div>
+        </div>
+        <button class="btn-add" style="background:var(--kinari)" onclick="addCash()">＋ 記一筆</button>
+      </div>
+    </div>
+    <div id="cash-list"></div>
+  </div>
+</div>
+
+<!-- ══ PAGE: 月總覽 ══ -->
+<div class="page" id="page-overview">
+  <div class="page-header">
+    <h1><span class="emoji">🌿</span>月總覽</h1>
+  </div>
+  <div class="washi"></div>
+  <div class="period-nav">
+    <button class="period-arrow" onclick="changePeriod(-1)">‹</button>
+    <div class="period-text" id="overview-period-label"></div>
+    <button class="period-arrow" onclick="changePeriod(1)">›</button>
+  </div>
+  <div id="overview-content"></div>
+</div>
+
+<!-- ══ PAGE: 設定 ══ -->
+<div class="page" id="page-settings">
+  <div class="page-header">
+    <h1><span class="emoji">⚙️</span>設定</h1>
+  </div>
+  <div class="washi"></div>
+
+  <!-- Settings sub-tabs -->
+  <!-- Theme toggle -->
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px 0">
+    <div style="font-size:13px;font-weight:700;color:var(--text2)">
+      <span id="theme-toggle-label-jp">🌿 日式清新</span>
+      <span id="theme-toggle-label-cat" style="display:none">🐱 貓咪主題</span>
+    </div>
+    <label class="toggle" style="margin:0">
+      <input type="checkbox" id="theme-toggle-input" onchange="toggleTheme(this)">
+      <span class="toggle-slider"></span>
+    </label>
+  </div>
+  <div style="display:flex;gap:0;margin:12px 16px 0;border:1.5px solid var(--border);border-radius:9px;overflow:hidden;background:var(--bg2)">
+    <button id="stab-default" onclick="switchSettingsTab('default')" style="flex:1;padding:8px;font-size:13px;font-weight:700;border:none;cursor:pointer;background:var(--matcha);color:white;font-family:inherit">📋 預設值</button>
+    <button id="stab-month" onclick="switchSettingsTab('month')" style="flex:1;padding:8px;font-size:13px;font-weight:700;border:none;cursor:pointer;background:transparent;color:var(--text2);font-family:inherit">📅 當月調整</button>
+  </div>
+
+  <!-- Tab: 預設值 -->
+  <div id="stab-content-default">
+    <div class="section-label">💴 薪水收入（預設）</div>
+    <div class="set-card" id="income-default-settings"></div>
+
+    <div class="section-label" style="align-items:flex-start;flex-direction:column;gap:6px">
+      <span>💰 薪資分配（預設）</span>
+      <span style="font-size:11px;color:var(--text3)">🏦 存款　💾 預存　💸 支出</span>
+    </div>
+    <div class="set-card">
+      <div id="budget-alloc-default-list"></div>
+      <div class="add-row">
+        <input type="text" id="new-alloc-name" placeholder="項目名稱">
+        <input type="number" id="new-alloc-amount" placeholder="金額" class="w-amt" inputmode="decimal">
+        <button class="btn-sm" onclick="addBudgetAlloc()">新增</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab: 當月調整 -->
+  <div id="stab-content-month" style="display:none">
+    <div class="section-label">💴 薪水收入</div>
+    <div class="set-card" id="income-settings"></div>
+
+    <div class="section-label" style="align-items:flex-start;flex-direction:column;gap:6px">
+      <div style="display:flex;align-items:center;gap:8px;width:100%;justify-content:space-between">
+        <span>💰 薪資分配</span>
+        <span id="alloc-remain-label" style="font-size:12px;font-weight:700;padding:2px 8px;border-radius:10px;background:var(--matcha-l);color:var(--matcha)"></span>
+      </div>
+      <span style="font-size:11px;color:var(--text3)">🏦 存款　💾 預存　💸 支出　✏️ = 已覆蓋</span>
+    </div>
+    <div class="set-card">
+      <div id="budget-alloc-list"></div>
+    </div>
+  </div>
+
+  <div class="section-label">🎁 額外收入</div>
+  <div class="set-card">
+    <div id="extra-income-list"></div>
+    <div class="add-row" style="flex-wrap:wrap;gap:6px">
+      <input type="text" id="new-extra-name" placeholder="名稱（例：績效獎金）" style="flex:1;min-width:120px">
+      <input type="number" id="new-extra-amount" placeholder="金額" class="w-amt" inputmode="decimal">
+      <input type="date" id="new-extra-date" style="flex:1;min-width:120px">
+      <button class="btn-sm" onclick="addExtraIncome()" style="background:var(--kinari)">新增</button>
+    </div>
+  </div>
+
+  <div class="section-label">💳 信用卡</div>
+  <div class="set-card">
+    <div id="cards-list"></div>
+    <div style="padding:12px 14px;border-top:1.5px dashed var(--border)">
+      <div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:8px;letter-spacing:0.5px">選擇卡片樣式</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px" id="card-preset-pills">
+        <button class="card-preset-btn active" data-emoji="🌸" data-color="var(--sakura-l)" data-tc="var(--taishin)" onclick="selectCardPreset(this)">🌸 粉</button>
+        <button class="card-preset-btn" data-emoji="🌊" data-color="var(--sora-l)" data-tc="var(--stanChart)" onclick="selectCardPreset(this)">🌊 藍</button>
+        <button class="card-preset-btn" data-emoji="🍃" data-color="var(--matcha-l)" data-tc="var(--matcha)" onclick="selectCardPreset(this)">🍃 綠</button>
+        <button class="card-preset-btn" data-emoji="💳" data-color="var(--kinari-l)" data-tc="var(--kinari)" onclick="selectCardPreset(this)">💳 金</button>
+        <button class="card-preset-btn" data-emoji="🌾" data-color="#F3EEF8" data-tc="#7B5EA7" onclick="selectCardPreset(this)">🌾 紫</button>
+        <button class="card-preset-btn" data-emoji="🌼" data-color="#FEF0E7" data-tc="#C05B2C" onclick="selectCardPreset(this)">🌼 橘</button>
+        <button class="card-preset-btn" data-emoji="🍁" data-color="#EAF6FA" data-tc="#2A8BA5" onclick="selectCardPreset(this)">🍁 青</button>
+        <button class="card-preset-btn" data-emoji="🌳" data-color="#EBEBEB" data-tc="#333333" onclick="selectCardPreset(this)">🌳 黑</button>
+      </div>
+      <div style="display:none;gap:8px;flex-wrap:wrap;margin-bottom:10px" id="card-cat-pills">
+        <button class="card-preset-btn active" data-catkey="cat1" data-emoji="🐱" data-color="var(--sakura-l)" data-tc="var(--taishin)" onclick="selectCatPreset(this)" style="display:flex;flex-direction:column;align-items:center;padding:6px 8px;min-width:52px">
+          <span style="display:block;width:32px;height:32px;line-height:0" id="cat-pill-cat1"></span><span style="font-size:10px;margin-top:2px">貓一</span>
+        </button>
+        <button class="card-preset-btn" data-catkey="fox" data-emoji="🦊" data-color="var(--sora-l)" data-tc="var(--stanChart)" onclick="selectCatPreset(this)" style="display:flex;flex-direction:column;align-items:center;padding:6px 8px;min-width:52px">
+          <span style="display:block;width:32px;height:32px;line-height:0" id="cat-pill-fox"></span><span style="font-size:10px;margin-top:2px">狐狸</span>
+        </button>
+        <button class="card-preset-btn" data-catkey="redcat" data-emoji="🔴" data-color="var(--matcha-l)" data-tc="var(--matcha)" onclick="selectCatPreset(this)" style="display:flex;flex-direction:column;align-items:center;padding:6px 8px;min-width:52px">
+          <span style="display:block;width:32px;height:32px;line-height:0" id="cat-pill-redcat"></span><span style="font-size:10px;margin-top:2px">紅貓</span>
+        </button>
+        <button class="card-preset-btn" data-catkey="cat2" data-emoji="🐱" data-color="var(--kinari-l)" data-tc="var(--kinari)" onclick="selectCatPreset(this)" style="display:flex;flex-direction:column;align-items:center;padding:6px 8px;min-width:52px">
+          <span style="display:block;width:32px;height:32px;line-height:0" id="cat-pill-cat2"></span><span style="font-size:10px;margin-top:2px">貓二</span>
+        </button>
+        <button class="card-preset-btn" data-catkey="snake" data-emoji="🐍" data-color="#F3EEF8" data-tc="#7B5EA7" onclick="selectCatPreset(this)" style="display:flex;flex-direction:column;align-items:center;padding:6px 8px;min-width:52px">
+          <span style="display:block;width:32px;height:32px;line-height:0" id="cat-pill-snake"></span><span style="font-size:10px;margin-top:2px">蛇貓</span>
+        </button>
+        <button class="card-preset-btn" data-catkey="bluecat" data-emoji="🔵" data-color="#EAF6FA" data-tc="#2A8BA5" onclick="selectCatPreset(this)" style="display:flex;flex-direction:column;align-items:center;padding:6px 8px;min-width:52px">
+          <span style="display:block;width:32px;height:32px;line-height:0" id="cat-pill-bluecat"></span><span style="font-size:10px;margin-top:2px">藍貓</span>
+        </button>
+      </div>
+      <div class="add-row" style="border-top:none;padding:0">
+        <input type="text" id="new-card-name" placeholder="卡片名稱（例：台新、玉山）">
+        <button class="btn-sm" onclick="addCard()">新增</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label">📌 固定支出</div>
+  <div class="set-card">
+    <div id="fixed-expense-list"></div>
+    <div class="add-row">
+      <input type="text" id="new-expense-name" placeholder="項目名稱">
+      <input type="number" id="new-expense-amount" placeholder="金額" class="w-amt" inputmode="decimal">
+      <button class="btn-sm" onclick="addFixedExpense()">新增</button>
+    </div>
+  </div>
+
+
+
+  <div class="section-label">💾 資料管理</div>
+  <div class="set-card">
+    <div style="display:flex;gap:10px;padding:14px">
+      <button class="data-btn" onclick="exportData()">📤 匯出備份</button>
+      <button class="data-btn" onclick="document.getElementById('import-file').click()">📥 匯入備份</button>
+      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+    </div>
+  </div>
+  <div style="height:12px"></div>
+</div>
+
+<!-- ══ PAGE: 年圖 ══ -->
+<div class="page" id="page-chart">
+  <div class="page-header">
+    <h1><span class="emoji">📊</span>年度趨勢</h1>
+  </div>
+  <div class="washi"></div>
+  <div class="period-nav">
+    <button class="period-arrow" onclick="changeYear(-1)">‹</button>
+    <div class="period-text" id="chart-year-label"></div>
+    <button class="period-arrow" onclick="changeYear(1)">›</button>
+  </div>
+  <div style="margin:12px 16px 0;background:var(--surface);border-radius:var(--r);border:1.5px solid var(--border);padding:16px 8px 8px">
+    <canvas id="year-chart" style="width:100%;height:240px"></canvas>
+  </div>
+  <div style="display:flex;gap:12px;margin:10px 16px 0;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2)"><span style="display:inline-block;width:20px;height:3px;background:var(--matcha);border-radius:2px"></span>月收入</div>
+    <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2)"><span style="display:inline-block;width:20px;height:3px;background:var(--sora);border-radius:2px"></span>投資&存款</div>
+    <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2)"><span style="display:inline-block;width:20px;height:3px;background:var(--sakura);border-radius:2px"></span>月支出</div>
+  </div>
+  <div id="chart-monthly-list" style="margin-bottom:12px"></div>
+</div>
+
+<!-- ══ TAB BAR ══ -->
+<nav class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('record')" id="tab-record">
+    <span class="tab-icon tab-icon-jp">📒</span>
+    <span class="tab-icon tab-icon-cat" style="display:none"><svg width="24" height="24" viewBox="-10 0 188 188" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="14" y="16" width="140" height="156" rx="12" fill="#FFEBA8"/>
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M68.953 57.0227C61.214 49.1558 52.8695 41.5158 50.0967 42.024C46.7487 42.6376 43.0945 58.4102 40.6886 71.0526C32.1528 78.8274 27 88.912 27 99.9315C27 124.523 52.6612 144.458 84.3158 144.458C115.97 144.458 141.632 124.523 141.632 99.9315C141.632 88.7828 136.357 78.5911 127.641 70.7801C125.235 58.1847 121.609 42.6332 118.285 42.024C115.518 41.5168 107.199 49.1273 99.4723 56.9786C94.6445 55.9528 89.5625 55.4052 84.3158 55.4052C78.9944 55.4052 73.8423 55.9686 68.953 57.0227Z" fill="white"/>
+    <path fill-rule="evenodd" d="M52.4999 109C73.7629 109 90.9999 91.763 90.9999 70.5C90.9999 65.1765 89.9195 60.1055 87.9659 55.494C86.759 55.4351 85.5419 55.4052 84.3158 55.4052C78.9943 55.4052 73.8423 55.9686 68.953 57.0227C61.2139 49.1558 52.8695 41.5158 50.0966 42.024C46.7487 42.6376 43.0945 58.4102 40.6886 71.0526C32.3033 78.6903 27.1828 88.557 27.0048 99.3493C33.7953 105.355 42.7219 109 52.4999 109Z" fill="#FFCE05"/>
+    <path fill-rule="evenodd" d="M141.488 103.108C135.254 107.452 127.675 110 119.5 110C98.237 110 81 92.763 81 71.5C81 65.7543 82.2586 60.3025 84.5153 55.4055C89.6913 55.4191 94.7057 55.9659 99.4724 56.9786C107.199 49.1273 115.518 41.5168 118.285 42.024C121.609 42.6332 125.235 58.1847 127.641 70.7801C136.357 78.5911 141.632 88.7828 141.632 99.9315C141.632 100.999 141.583 102.058 141.488 103.108Z" fill="#FFCE05"/>
+    <ellipse cx="59.5" cy="94.5" rx="6.5" ry="7.5" fill="#333"/>
+    <circle cx="58" cy="92" r="2" fill="white"/>
+    <ellipse cx="111.5" cy="94.5" rx="6.5" ry="7.5" fill="#333"/>
+    <circle cx="110" cy="92" r="2" fill="white"/>
+    <path d="M90.316 103.826C90.316 105.658 88.195 107.142 85.579 107.142C82.963 107.142 80.842 105.658 80.842 103.826C80.842 101.995 82.963 100.037 85.579 100.037C88.195 100.037 90.316 101.995 90.316 103.826Z" fill="#333"/>
+    <ellipse cx="51" cy="111" rx="8" ry="5" fill="#FFA787"/>
+    <ellipse cx="117" cy="111" rx="8" ry="5" fill="#FFA787"/>
+  </svg></span>
+    <span class="tab-label">記帳</span>
+  </button>
+  <button class="tab-btn" onclick="switchTab('overview')" id="tab-overview">
+    <span class="tab-icon tab-icon-jp">🌿</span>
+    <span class="tab-icon tab-icon-cat" style="display:none"><svg width="24" height="24" viewBox="-10 0 188 188" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="14" y="16" width="140" height="156" rx="12" fill="#FFD4CE"/>
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M68.931 66.0393C61.7368 58.7264 53.9799 51.6243 51.4023 52.0967C48.2901 52.667 44.8932 67.3291 42.6567 79.0813C34.7219 86.3087 29.9319 95.6832 29.9319 105.927C29.9319 128.787 53.7862 147.318 83.212 147.318C112.638 147.318 136.492 128.787 136.492 105.927C136.492 95.5631 131.589 86.089 123.487 78.828C121.25 67.1195 117.88 52.663 114.79 52.0967C112.217 51.6252 104.484 58.6998 97.3014 65.9983C92.8135 65.0448 88.0893 64.5357 83.212 64.5357C78.2653 64.5357 73.4759 65.0594 68.931 66.0393Z" fill="white"/>
+    <circle cx="60.69" cy="100.69" r="10.69" fill="white"/>
+    <circle cx="60.5" cy="100.5" r="8.5" fill="#333"/>
+    <circle cx="56.5" cy="96.5" r="1.5" fill="white"/>
+    <circle cx="59.5" cy="100.5" r="2.5" fill="white"/>
+    <circle cx="107.69" cy="100.69" r="10.69" fill="white"/>
+    <circle cx="107.5" cy="100.5" r="8.5" fill="#333"/>
+    <circle cx="103.5" cy="96.5" r="1.5" fill="white"/>
+    <circle cx="106.5" cy="100.5" r="2.5" fill="white"/>
+    <path d="M88.007 112.336C88.007 114.038 86.035 115.418 83.604 115.418C81.172 115.418 79.2 114.038 79.2 112.336C79.2 110.634 81.172 108.813 83.604 108.813C86.035 108.813 88.007 110.634 88.007 112.336Z" fill="#323232"/>
+    <ellipse cx="56" cy="116" rx="6" ry="2" fill="#FFC7C3"/>
+    <ellipse cx="112" cy="116" rx="6" ry="2" fill="#FFC7C3"/>
+    <path d="M102.797 65.447C104.55 62.946 104.047 60.034 101.947 58.583C99.847 57.133 96.945 57.694 95.466 59.836C94.36 58.829 92.73 57.682 90.846 57.691C88.297 57.704 86.248 59.826 86.269 62.433C86.28 63.822 86.878 65.068 87.82 65.927C85.347 66.773 83.988 69.556 84.45 72.056C85.342 74.444 88.046 75.648 90.49 74.744C90.88 74.584 90.862 74.86 90.861 75C90.883 77.607 92.966 79.709 95.516 79.697C98.065 79.684 100.114 77.561 100.093 74.955C101.095 75.374 102.315 75.417 103.476 74.988C105.92 74.085 107.179 71.417 106.288 69.028C105.706 67.467 104.349 66.413 102.797 65.447Z" fill="#FFA787"/>
+  </svg></span>
+    <span class="tab-label">月總覽</span>
+  </button>
+  <button class="tab-btn" onclick="switchTab('chart')" id="tab-chart">
+    <span class="tab-icon tab-icon-jp">📊</span>
+    <span class="tab-icon tab-icon-cat" style="display:none"><svg width="24" height="24" viewBox="-10 0 188 188" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="14" y="16" width="140" height="156" rx="12" fill="#B9E6FF"/>
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M68.931 66.0393C61.7368 58.7264 53.9799 51.6243 51.4023 52.0967C48.2901 52.667 44.8932 67.3291 42.6567 79.0813C34.7219 86.3087 29.9319 95.6832 29.9319 105.927C29.9319 128.787 53.7862 147.318 83.212 147.318C112.638 147.318 136.492 128.787 136.492 105.927C136.492 95.5631 131.589 86.089 123.487 78.828C121.25 67.1195 117.88 52.663 114.79 52.0967C112.217 51.6252 104.484 58.6998 97.3014 65.9983C92.8135 65.0448 88.0893 64.5357 83.212 64.5357C78.2653 64.5357 73.4759 65.0594 68.931 66.0393Z" fill="#EDEDED"/>
+    <circle cx="60.437" cy="101.17" r="10.69" fill="white"/>
+    <circle cx="63" cy="102" r="8" fill="#1C1B1C"/>
+    <circle r="10.69" transform="matrix(-1 0 0 1 105.563 101.17)" fill="white"/>
+    <circle r="8" transform="matrix(-1 0 0 1 103 102)" fill="#0F0E0F"/>
+    <path d="M88.007 114.336C88.007 116.038 86.035 117.418 83.604 117.418C81.172 117.418 79.2 116.038 79.2 114.336C79.2 112.634 81.172 110.813 83.604 110.813C86.035 110.813 88.007 112.634 88.007 114.336Z" fill="#0F0E0F"/>
+    <circle cx="55" cy="120" r="6" fill="#FFCEB9"/>
+    <circle cx="111" cy="120" r="6" fill="#FFCEB9"/>
+    <path d="M129.36 79.26L130.71 73.407C131.112 71.664 129.789 70 128 70C126.211 70 124.888 71.664 125.29 73.407L126.64 79.26L128.908 82.146L129.36 79.26Z" fill="white"/>
+    <path d="M128 84.826C129.561 84.826 130.826 83.561 130.826 82C130.826 80.44 129.561 79.175 128 79.175C126.44 79.175 125.175 80.44 125.175 82C125.175 83.561 126.44 84.826 128 84.826Z" fill="#FED402"/>
+  </svg></span>
+    <span class="tab-label">年圖</span>
+  </button>
+  <button class="tab-btn" onclick="switchTab('settings')" id="tab-settings">
+    <span class="tab-icon tab-icon-jp">⚙️</span>
+    <span class="tab-icon tab-icon-cat" style="display:none"><svg width="24" height="24" viewBox="-10 0 188 188" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="14" y="16" width="140" height="156" rx="12" fill="#8ED2C9"/>
+    <path fill-rule="evenodd" clip-rule="evenodd" d="M68.931 66.0393C61.7368 58.7264 53.98 51.6243 51.4023 52.0967C48.2901 52.667 44.8932 67.3291 42.6567 79.0813C34.7219 86.3087 29.9319 95.6832 29.9319 105.927C29.9319 128.787 53.7862 147.318 83.212 147.318C112.638 147.318 136.492 128.787 136.492 105.927C136.492 95.5631 131.589 86.089 123.487 78.828C121.25 67.1195 117.88 52.663 114.79 52.0967C112.217 51.6252 104.484 58.6998 97.3014 65.9983C92.8135 65.0448 88.0893 64.5357 83.212 64.5357C78.2653 64.5357 73.476 65.0594 68.931 66.0393Z" fill="#CCCCCC"/>
+    <circle cx="60.437" cy="101.17" r="10.69" fill="white"/>
+    <circle cx="62.296" cy="98.381" r="9.761" fill="#333333"/>
+    <circle cx="63.813" cy="95.25" r="1.981" fill="white"/>
+    <circle r="10.69" transform="matrix(-1 0 0 1 107.846 101.17)" fill="white"/>
+    <circle r="9.761" transform="matrix(-1 0 0 1 105.987 98.381)" fill="#333333"/>
+    <circle r="1.981" transform="matrix(-1 0 0 1 104.47 95.25)" fill="white"/>
+    <path d="M88.007 112.336C88.007 114.038 86.035 115.418 83.604 115.418C81.172 115.418 79.2 114.038 79.2 112.336C79.2 110.634 81.172 108.813 83.604 108.813C86.035 108.813 88.007 110.634 88.007 112.336Z" fill="#333333"/>
+    <ellipse cx="56" cy="124" rx="6" ry="2" fill="#FFA787"/>
+    <ellipse cx="112" cy="124" rx="6" ry="2" fill="#FFA787"/>
+    <circle r="1.821" transform="matrix(-0.993 0.114 0.114 0.993 96.763 52.254)" fill="#FFC547"/>
+    <circle r="1.821" transform="matrix(-0.993 0.114 0.114 0.993 85.983 46.158)" fill="#FFC547"/>
+    <circle r="1.821" transform="matrix(-0.993 0.114 0.114 0.993 73.155 48.85)" fill="#FFC547"/>
+    <path d="M75.775 97.774C81.728 96.715 85.221 96.734 91.578 97.774V101.634C85.507 100.669 82.046 100.655 75.775 101.634V97.774Z" fill="#242424"/>
+  </svg></span>
+    <span class="tab-label">設定</span>
+  </button>
+</nav>
+
+<!-- ══ EDIT MODAL ══ -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">✏️ 編輯支出</div>
+    <div class="modal-field">
+      <div class="modal-field-label">品項</div>
+      <input type="text" id="edit-name">
+    </div>
+    <div class="modal-field">
+      <div class="modal-field-label">金額</div>
+      <input type="number" id="edit-amount" inputmode="decimal">
+    </div>
+    <div class="modal-field">
+      <div class="modal-field-label">日期</div>
+      <input type="date" id="edit-date">
+    </div>
+    <div class="modal-field">
+      <div class="modal-field-label">信用卡</div>
+      <div class="bank-pills" id="edit-bank-pills" style="margin-top:4px"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeEditModal()">取消</button>
+      <button class="btn-confirm" onclick="saveEdit()">儲存</button>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- ══ EXTRA ALLOC MODAL ══ -->
+<div class="modal-overlay" id="extra-alloc-modal">
+  <div class="modal" style="max-height:80vh;overflow-y:auto">
+    <div id="extra-alloc-body"></div>
+  </div>
+</div>
+
+<script>
+var STORAGE_KEY = 'finance_v3';
+var data = {
+  transactions: [],
+  cashTransactions: [],
+  extraIncomes: [],
+  monthlyOverrides: {},
+  cards: [
+    { id: 1, name: '台新', emoji: '🌸', color: 'var(--sakura-l)', textColor: 'var(--taishin)', catKey: 'cat1' },
+    { id: 2, name: '星展', emoji: '🌊', color: 'var(--sora-l)', textColor: 'var(--stanChart)', catKey: 'fox' },
+    { id: 3, name: '聯邦', emoji: '🍃', color: 'var(--matcha-l)', textColor: 'var(--lianBang)', catKey: 'redcat' }
+  ],
+  fixedExpenses: [
+    { id: 1, name: '水電費', amount: 1200, included: true, note: '' },
+    { id: 2, name: '電信費', amount: 600, included: true, note: '' },
+    { id: 3, name: 'iCloud', amount: 90, included: true, note: '' },
+    { id: 4, name: '做身體', amount: 0, included: true, note: '' },
+    { id: 5, name: '剪頭髮', amount: 0, included: true, note: '' },
+    { id: 6, name: '投信訂閱', amount: 0, included: true, note: '' },
+    { id: 7, name: 'Netflix', amount: 0, included: true, note: '' },
+    { id: 8, name: 'AI訂閱', amount: 0, included: true, note: '' },
+    { id: 9, name: '捐款（野灣）', amount: 0, included: true, note: '' },
+    { id: 10, name: '共同錢包', amount: 0, included: true, note: '' }
+  ],
+  budgetAllocs: [
+    { id: 1, name: '薪水', amount: 0, isIncome: true },
+    { id: 2, name: '房租', amount: 12500, allocType: 'other' },
+    { id: 3, name: '存錢 元大定期定額', amount: 0, allocType: 'saving' },
+    { id: 4, name: '換匯-日幣', amount: 0, allocType: 'other' },
+    { id: 5, name: '生活費預算', amount: 30000, allocType: 'other' },
+    { id: 6, name: '活存', amount: 0, allocType: 'saving' },
+    { id: 7, name: '旅行基金 台新子帳戶', amount: 0, allocType: 'reserve' },
+    { id: 8, name: '醫療/健檢 台新子帳戶', amount: 0, allocType: 'reserve' }
+  ]
+};
+
+function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+function load() {
+  var raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) raw = localStorage.getItem('finance_v2');
+  if (!raw) raw = localStorage.getItem('finance_v1');
+  if (raw) {
+    try {
+      var d = JSON.parse(raw);
+      if (!d.cashTransactions) d.cashTransactions = [];
+      if (!d.extraIncomes) d.extraIncomes = [];
+      if (!d.monthlyOverrides) d.monthlyOverrides = {};
+      if (!d.cards || d.cards.length === 0) d.cards = [
+        { id: 1, name: '台新', emoji: '🌸', color: 'var(--sakura-l)', textColor: 'var(--taishin)', catKey: 'cat1' },
+        { id: 2, name: '星展', emoji: '🌊', color: 'var(--sora-l)', textColor: 'var(--stanChart)', catKey: 'fox' },
+        { id: 3, name: '聯邦', emoji: '🍃', color: 'var(--matcha-l)', textColor: 'var(--lianBang)', catKey: 'redcat' }
+      ];
+      if (d.fixedExpenses) d.fixedExpenses.forEach(function(e){
+        if (e.included === undefined) e.included = true;
+        if (e.note === undefined) e.note = '';
+      });
+      if (d.budgetAllocs) d.budgetAllocs.forEach(function(a){
+        if (!a.allocType) {
+          if (a.isIncome) a.allocType = 'income';
+          else if (a.isSaving) a.allocType = 'saving';
+          else a.allocType = 'other';
+        }
+      });
+      data = d;
+    } catch(err) {}
+  }
+}
+
+// ── PERIOD KEY ──────────────────────────────────────
+function periodKey(p) { return p.year + '-' + p.month; }
+
+// Get alloc amount for a specific period (override or default)
+function getAllocAmount(allocId, p) {
+  var key = periodKey(p);
+  if (data.monthlyOverrides[key] && data.monthlyOverrides[key][allocId] !== undefined) {
+    return data.monthlyOverrides[key][allocId];
+  }
+  var a = data.budgetAllocs.find(function(x){ return x.id == allocId; });
+  return a ? (a.amount || 0) : 0;
+}
+
+function setAllocOverride(allocId, p, val) {
+  var key = periodKey(p);
+  if (!data.monthlyOverrides[key]) data.monthlyOverrides[key] = {};
+  data.monthlyOverrides[key][allocId] = parseFloat(val) || 0;
+  save();
+}
+
+// ── PERIOD HELPERS ───────────────────────────────────
+var currentPeriodOffset = 0;
+var currentChartYear = new Date().getFullYear();
+var settingsMonthOffset = 0;
+
+function getCurrentPeriod() {
+  var today = new Date();
+  var y = today.getFullYear(), m = today.getMonth() + 1, d = today.getDate();
+  if (d < 25) { m -= 1; if (m === 0) { m = 12; y -= 1; } }
+  m += currentPeriodOffset;
+  while (m > 12) { m -= 12; y += 1; }
+  while (m < 1)  { m += 12; y -= 1; }
+  return { year: y, month: m };
+}
+
+function getSettingsPeriod() {
+  var today = new Date();
+  var y = today.getFullYear(), m = today.getMonth() + 1, d = today.getDate();
+  if (d < 25) { m -= 1; if (m === 0) { m = 12; y -= 1; } }
+  m += settingsMonthOffset;
+  while (m > 12) { m -= 12; y += 1; }
+  while (m < 1)  { m += 12; y -= 1; }
+  return { year: y, month: m };
+}
+
+function periodLabel(p) {
+  var endM = p.month + 1, endY = p.year;
+  if (endM > 12) { endM = 1; endY += 1; }
+  return p.year + '.' + p.month + '.25 – ' + endY + '.' + endM + '.24';
+}
+function periodShort(p) { return p.year + '/' + p.month; }
+function periodStart(p) { return new Date(p.year, p.month - 1, 25); }
+function periodEnd(p) {
+  var endM = p.month + 1, endY = p.year;
+  if (endM > 12) { endM = 1; endY += 1; }
+  return new Date(endY, endM - 1, 24, 23, 59, 59);
+}
+function inPeriod(tx, p) {
+  var d = new Date(tx.date + 'T00:00:00');
+  return d >= periodStart(p) && d <= periodEnd(p);
+}
+function getWeekNum(dateStr, p) {
+  var d = new Date(dateStr + 'T00:00:00');
+  return Math.floor((d - periodStart(p)) / (7*24*60*60*1000)) + 1;
+}
+function weekLabel(wn, p) {
+  var ws = new Date(periodStart(p).getTime() + (wn-1)*7*24*60*60*1000);
+  var we = new Date(ws.getTime() + 6*24*60*60*1000);
+  var pe = periodEnd(p);
+  if (we > pe) we = pe;
+  function f(d) { return (d.getMonth()+1) + '/' + d.getDate(); }
+  return '第 ' + wn + ' 週　' + f(ws) + ' – ' + f(we);
+}
+function getCard(name) {
+  var c = (data.cards||[]).find(function(c){ return c.name === name; });
+  return c || { emoji: '💳', color: 'var(--bg2)', textColor: 'var(--text2)' };
+}
+function bankEmoji(bank) { return getCard(bank).emoji; }
+function bankColor(bank) { return getCard(bank).color; }
+
+// ── PERIOD SUMMARY ───────────────────────────────────
+function getPeriodSummary(p) {
+  var txs = data.transactions.filter(function(tx){ return inPeriod(tx, p); });
+  var cashTxs = (data.cashTransactions||[]).filter(function(tx){ return inPeriod(tx, p); });
+  var extras = (data.extraIncomes||[]).filter(function(e){ return inPeriod(e, p); });
+
+  // Salary income (period-specific)
+  var salary = 0;
+  data.budgetAllocs.forEach(function(a){
+    if (a.isIncome || a.allocType === 'income') salary += getAllocAmount(a.id, p);
+  });
+  var extraTotal = extras.reduce(function(s,e){ return s+e.amount; }, 0);
+  var income = salary + extraTotal;
+
+  // Savings (period-specific)
+  var allocSavings = data.budgetAllocs.filter(function(a){ return a.allocType === 'saving'; })
+    .reduce(function(s,a){ return s + getAllocAmount(a.id, p); }, 0);
+  var extraSavings = extras.reduce(function(sumE, ei){
+    return sumE + (ei.allocations||[]).filter(function(al){ return al.type==='saving'; })
+      .reduce(function(ss,al){ return ss+al.amount; }, 0);
+  }, 0);
+  var totalSavings = allocSavings + extraSavings;
+
+  // Reserves (period-specific)
+  var totalReserve = data.budgetAllocs.filter(function(a){ return a.allocType === 'reserve'; })
+    .reduce(function(s,a){ return s + getAllocAmount(a.id, p); }, 0);
+
+  // Spending
+  var ccTotal = txs.reduce(function(s,tx){ return s+tx.amount; }, 0);
+  var cashTotal = cashTxs.reduce(function(s,tx){ return s+tx.amount; }, 0);
+
+  // Fixed expenses: display only, NOT in spending calc
+  var fixedTotal = data.fixedExpenses.filter(function(e){ return e.included!==false; })
+    .reduce(function(s,e){ return s+(e.amount||0); }, 0);
+
+  // Other allocs (房租 etc)
+  var otherAllocs = data.budgetAllocs.filter(function(a){
+    return a.allocType === 'other' && !a.isIncome;
+  }).reduce(function(s,a){ return s + getAllocAmount(a.id, p); }, 0);
+
+  // Remain = income - cc - cash - savings - reserve - otherAllocs
+  var totalOut = ccTotal + cashTotal + totalSavings + totalReserve + otherAllocs;
+  var remain = income - totalOut;
+
+  var settled = txs.filter(function(t){return t.settled;}).reduce(function(s,t){return s+t.amount;},0);
+
+  return {
+    income: income, salary: salary, extraTotal: extraTotal,
+    ccTotal: ccTotal, cashTotal: cashTotal,
+    savings: totalSavings, reserve: totalReserve,
+    fixedTotal: fixedTotal,
+    otherAllocs: otherAllocs,
+    remain: remain, settled: settled
+  };
+}
+
+// ── STATE ────────────────────────────────────────────
+var selectedBank = '台新';
+var editingId = null;
+var editBank = '台新';
+var currentSubTab = 'cc';
+var editingExtraId = null;
+
+function switchSubTab(tab) {
+  currentSubTab = tab;
+  document.getElementById('section-cc').style.display   = tab === 'cc'   ? '' : 'none';
+  document.getElementById('section-cash').style.display = tab === 'cash' ? '' : 'none';
+  var ccBtn   = document.getElementById('sub-cc');
+  var cashBtn = document.getElementById('sub-cash');
+  ccBtn.style.background   = tab === 'cc'   ? 'var(--matcha)' : 'transparent';
+  ccBtn.style.color        = tab === 'cc'   ? 'white' : 'var(--text2)';
+  cashBtn.style.background = tab === 'cash' ? 'var(--kinari)' : 'transparent';
+  cashBtn.style.color      = tab === 'cash' ? 'white' : 'var(--text2)';
+}
+
+function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+document.addEventListener('DOMContentLoaded', function() {
+  load();
+  var today = new Date();
+  var ds = today.getFullYear() + '-' + pad(today.getMonth()+1) + '-' + pad(today.getDate());
+  document.getElementById('input-date').value = ds;
+  document.getElementById('cash-date').value = ds;
+  document.getElementById('new-extra-date').value = ds;
+
+  function setupPills(selector, onSelect) {
+    document.querySelectorAll(selector + ' .bank-pill').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll(selector + ' .bank-pill').forEach(function(b){ b.classList.remove('active'); });
+        btn.classList.add('active');
+        onSelect(btn.dataset.bank);
+      });
+    });
+  }
+  renderBankPills();
+  renderAll();
+  applyTheme(currentTheme);
+});
+
+function renderAll() { renderRecord(); renderCash(); renderOverview(); renderSettings(); }
+
+// ── RECORD ───────────────────────────────────────────
+function renderRecord() {
+  var p = getCurrentPeriod();
+  document.getElementById('record-period-label').textContent = periodLabel(p);
+  var txs = data.transactions.filter(function(tx){ return inPeriod(tx, p); });
+  txs.sort(function(a,b){ return b.date.localeCompare(a.date); });
+  var weeks = {};
+  txs.forEach(function(tx){
+    var wn = getWeekNum(tx.date, p);
+    if (!weeks[wn]) weeks[wn] = [];
+    weeks[wn].push(tx);
+  });
+  var html = '';
+  if (txs.length === 0) {
+    html = '<div class="empty-state"><div class="empty-icon">🍵</div><div class="empty-text">還沒有記帳<br>快新增第一筆吧！</div></div>';
+  } else {
+    Object.keys(weeks).sort(function(a,b){return b-a;}).forEach(function(wn){
+      var group = weeks[wn];
+      var total = group.reduce(function(s,tx){return s+tx.amount;},0);
+      var allSettled = group.every(function(tx){return tx.settled;});
+      var pendingTotal = group.filter(function(tx){return !tx.settled;}).reduce(function(s,tx){return s+tx.amount;},0);
+      html += '<div class="week-block">';
+      html += '<div class="week-header"><div class="week-left"><div class="week-label">🗓 ' + weekLabel(parseInt(wn), p) + '</div>';
+      if (allSettled) html += '<span class="week-badge badge-settled">✅ 已匯兆豐</span>';
+      else if (pendingTotal > 0) html += '<span class="week-badge badge-pending">🏦 待匯 $' + pendingTotal.toLocaleString() + '</span>';
+      html += '</div><div class="week-total">$' + total.toLocaleString() + '</div></div>';
+      if (!allSettled) html += '<button class="settle-btn" data-wn="' + wn + '" onclick="settleWeekById(this)">🏦 匯款到兆豐　NT$ ' + pendingTotal.toLocaleString() + '</button>';
+      group.forEach(function(tx){
+        html += '<div class="tx-item' + (tx.settled ? ' settled' : '') + '">';
+        html += '<div class="tx-bank-badge" style="background:' + bankColor(tx.bank) + '">' + bankEmoji(tx.bank) + '</div>';
+        html += '<div class="tx-info"><div class="tx-name">' + tx.name + '</div><div class="tx-meta">' + tx.date.slice(5).replace('-','/') + '　' + tx.bank + '</div></div>';
+        html += '<div class="tx-amount">$' + tx.amount.toLocaleString() + '</div>';
+        html += '<div class="tx-actions"><button class="tx-btn" data-txid="' + tx.id + '" onclick="openEditById(this)">✏️</button><button class="tx-btn del" data-txid="' + tx.id + '" onclick="deleteById(this)">🗑</button></div>';
+        html += '</div>';
+      });
+      html += '</div>';
+    });
+  }
+  document.getElementById('tx-list').innerHTML = html;
+}
+
+function addTransaction() {
+  var name = document.getElementById('input-name').value.trim();
+  var amount = parseFloat(document.getElementById('input-amount').value);
+  var date = document.getElementById('input-date').value;
+  if (!name) { showToast('⚠️ 請輸入品項名稱'); return; }
+  if (!amount||amount<=0) { showToast('⚠️ 請輸入金額'); return; }
+  if (!date) { showToast('⚠️ 請選擇日期'); return; }
+  data.transactions.push({ id: Date.now(), name: name, amount: amount, date: date, bank: selectedBank, settled: false });
+  save();
+  document.getElementById('input-name').value = '';
+  document.getElementById('input-amount').value = '';
+  showToast('✅ 已記：' + name + ' $' + amount);
+  renderAll();
+}
+function deleteTransaction(id) {
+  data.transactions = data.transactions.filter(function(tx){return tx.id!=id;});
+  save(); renderAll();
+}
+function settleWeek(wn) {
+  var p = getCurrentPeriod();
+  data.transactions.forEach(function(tx){
+    if (inPeriod(tx,p) && getWeekNum(tx.date,p)===parseInt(wn) && !tx.settled) tx.settled = true;
+  });
+  save(); renderAll(); showToast('🏦 第'+wn+'週已匯款到兆豐');
+}
+function settleWeekById(el) { settleWeek(el.getAttribute('data-wn')); }
+function openEdit(id) {
+  var tx = data.transactions.find(function(t){return t.id==id;});
+  if (!tx) return;
+  editingId = id; editBank = tx.bank;
+  document.getElementById('edit-name').value = tx.name;
+  document.getElementById('edit-amount').value = tx.amount;
+  document.getElementById('edit-date').value = tx.date;
+  renderBankPills(tx.bank);
+  document.getElementById('edit-modal').classList.add('open');
+}
+function closeEditModal() { document.getElementById('edit-modal').classList.remove('open'); editingId = null; }
+function saveEdit() {
+  var tx = data.transactions.find(function(t){return t.id==editingId;});
+  if (!tx) return;
+  tx.name = document.getElementById('edit-name').value.trim();
+  tx.amount = parseFloat(document.getElementById('edit-amount').value)||0;
+  tx.date = document.getElementById('edit-date').value;
+  tx.bank = editBank;
+  save(); closeEditModal(); renderAll(); showToast('✅ 已更新');
+}
+
+// ── CASH ─────────────────────────────────────────────
+function addCash() {
+  var name = document.getElementById('cash-name').value.trim();
+  var amount = parseFloat(document.getElementById('cash-amount').value);
+  var date = document.getElementById('cash-date').value;
+  if (!name) { showToast('⚠️ 請輸入品項名稱'); return; }
+  if (!amount||amount<=0) { showToast('⚠️ 請輸入金額'); return; }
+  if (!date) { showToast('⚠️ 請選擇日期'); return; }
+  data.cashTransactions.push({ id: Date.now(), name: name, amount: amount, date: date });
+  save();
+  document.getElementById('cash-name').value = '';
+  document.getElementById('cash-amount').value = '';
+  showToast('✅ 已記現金：' + name + ' $' + amount);
+  renderAll();
+}
+function renderCash() {
+  var p = getCurrentPeriod();
+  var txs = (data.cashTransactions||[]).filter(function(tx){ return inPeriod(tx,p); });
+  txs.sort(function(a,b){ return b.date.localeCompare(a.date); });
+  var total = txs.reduce(function(s,tx){return s+tx.amount;},0);
+  var html = '';
+  if (txs.length === 0) {
+    html = '<div class="empty-state"><div class="empty-icon">💵</div><div class="empty-text">還沒有現金記帳</div></div>';
+  } else {
+    html += '<div class="week-block" style="margin-top:10px">';
+    html += '<div class="week-header"><div class="week-left"><div class="week-label">💵 本期現金支出</div></div><div class="week-total">$' + total.toLocaleString() + '</div></div>';
+    txs.forEach(function(tx){
+      html += '<div class="tx-item"><div class="tx-bank-badge" style="background:var(--kinari-l)">💵</div>';
+      html += '<div class="tx-info"><div class="tx-name">' + tx.name + '</div><div class="tx-meta">' + tx.date.slice(5).replace('-','/') + '</div></div>';
+      html += '<div class="tx-amount">$' + tx.amount.toLocaleString() + '</div>';
+      html += '<div class="tx-actions"><button class="tx-btn del" data-txid="' + tx.id + '" onclick="deleteCashById(this)">🗑</button></div></div>';
+    });
+    html += '</div>';
+  }
+  document.getElementById('cash-list').innerHTML = html;
+}
+function deleteCash(id) {
+  data.cashTransactions = data.cashTransactions.filter(function(tx){return tx.id!=id;});
+  save(); renderAll();
+}
+
+// ── OVERVIEW ─────────────────────────────────────────
+function changePeriod(delta) { currentPeriodOffset += delta; renderAll(); }
+
+function renderOverview() {
+  var p = getCurrentPeriod();
+  document.getElementById('overview-period-label').textContent = periodLabel(p);
+  var s = getPeriodSummary(p);
+
+  var html = '';
+
+  // ── Hero card: 6 metrics ──
+  html += '<div class="hero-card">';
+  html += '<div class="hero-label">本期餘額</div>';
+  html += '<div class="hero-amount">' + (s.remain>=0?'+':'') + 'NT$' + s.remain.toLocaleString() + '</div>';
+  html += '<div class="hero-period">' + periodLabel(p) + '</div>';
+  // Row 1: income / cc / cash
+  html += '<div class="hero-cols" style="margin-top:14px">';
+  html += '<div class="hero-col"><div class="hero-col-label">💴 收入</div><div class="hero-col-val">$' + s.income.toLocaleString() + '</div></div>';
+  html += '<div class="hero-col"><div class="hero-col-label">💳 信用卡</div><div class="hero-col-val">$' + s.ccTotal.toLocaleString() + '</div></div>';
+  html += '<div class="hero-col"><div class="hero-col-label">💵 現金</div><div class="hero-col-val">$' + s.cashTotal.toLocaleString() + '</div></div>';
+  html += '</div>';
+  // Row 2: savings / reserve / fixed
+  html += '<div class="hero-cols" style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.15)">';
+  html += '<div class="hero-col"><div class="hero-col-label">💾 投資存款</div><div class="hero-col-val">$' + s.savings.toLocaleString() + '</div></div>';
+  html += '<div class="hero-col"><div class="hero-col-label">🏦 預存</div><div class="hero-col-val">$' + s.reserve.toLocaleString() + '</div></div>';
+  html += '<div class="hero-col"><div class="hero-col-label">📌 固定支出</div><div class="hero-col-val" style="font-size:13px;opacity:0.75">$' + s.fixedTotal.toLocaleString() + '</div></div>';
+  html += '</div>';
+  html += '</div>';
+
+  // Extra incomes this period
+  var extras = (data.extraIncomes||[]).filter(function(e){ return inPeriod(e,p); });
+  if (extras.length) {
+    html += '<div class="ov-card" style="margin-top:10px">';
+    html += '<div class="ov-card-header"><div class="ov-card-title">🎁 額外收入</div><div class="ov-card-total val-green">+$' + extras.reduce(function(s,e){return s+e.amount;},0).toLocaleString() + '</div></div>';
+    extras.forEach(function(e){
+      var allocated = (e.allocations||[]).reduce(function(s,a){return s+a.amount;},0);
+      var unalloc = e.amount - allocated;
+      html += '<div class="ov-row" style="flex-direction:column;align-items:flex-start;gap:5px">';
+      html += '<div style="display:flex;justify-content:space-between;width:100%"><div class="ov-row-name">🎁 ' + e.name + '</div><div class="ov-row-val val-green">+$' + e.amount.toLocaleString() + '</div></div>';
+      if (unalloc > 0) html += '<div style="font-size:11px;color:var(--kinari);background:var(--kinari-l);padding:3px 8px;border-radius:8px">⚠️ 未分配 $' + unalloc.toLocaleString() + '</div>';
+      (e.allocations||[]).forEach(function(al){
+        html += '<div style="display:flex;justify-content:space-between;width:100%;padding-left:8px;font-size:13px"><div style="color:var(--text2)">' + (al.type==='saving'?'🏦':'💾') + ' ' + al.name + '</div><div style="font-weight:600">$' + al.amount.toLocaleString() + '</div></div>';
+      });
+      html += '<button data-eid="' + e.id + '" onclick="openExtraAllocById(this)" style="font-size:12px;padding:5px 10px;border-radius:7px;border:1.5px dashed var(--border);background:var(--bg);cursor:pointer;font-family:inherit;color:var(--text2)">✏️ 編輯分配</button>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  // Budget allocs by type
+  html += '<div class="ov-card" style="margin-top:10px">';
+  html += '<div class="ov-card-header"><div class="ov-card-title">💰 薪資分配</div></div>';
+  data.budgetAllocs.forEach(function(a){
+    var amt = getAllocAmount(a.id, p);
+    var icon = a.isIncome||a.allocType==='income' ? '💴' : a.allocType==='saving' ? '🏦' : a.allocType==='reserve' ? '💾' : '💸';
+    var cls = (a.isIncome||a.allocType==='income') ? 'val-green' : '';
+    html += '<div class="ov-row"><div class="ov-row-name">' + icon + ' ' + a.name + '</div>';
+    html += '<div class="ov-row-val ' + cls + '">' + ((a.isIncome||a.allocType==='income')?'+':'-') + 'NT$' + amt.toLocaleString() + '</div></div>';
+  });
+  html += '</div>';
+
+  // Fixed expenses (display only, labeled clearly)
+  var fixedItems = data.fixedExpenses.filter(function(e){return e.amount && e.included!==false;});
+  if (fixedItems.length) {
+    html += '<div class="ov-card" style="margin-top:10px">';
+    html += '<div class="ov-card-header"><div class="ov-card-title">📌 固定支出 <span style="font-size:10px;color:var(--text3);font-weight:400">（僅供參考）</span></div><div class="ov-card-total">$' + s.fixedTotal.toLocaleString() + '</div></div>';
+    fixedItems.forEach(function(e){
+      html += '<div class="ov-row"><div class="ov-row-name">' + e.name + '</div><div class="ov-row-val" style="color:var(--text3)">$' + e.amount.toLocaleString() + '</div></div>';
+    });
+    html += '</div>';
+  }
+
+  // CC breakdown
+  html += '<div class="ov-card" style="margin-top:10px;margin-bottom:12px">';
+  html += '<div class="ov-card-header"><div class="ov-card-title">💳 信用卡支出</div><div class="ov-card-total">$' + s.ccTotal.toLocaleString() + '</div></div>';
+  html += '<div class="ov-row"><div class="ov-row-name">✅ 已匯兆豐</div><div class="ov-row-val val-green">$' + s.settled.toLocaleString() + '</div></div>';
+  html += '<div class="ov-row"><div class="ov-row-name">🕐 待匯</div><div class="ov-row-val val-gold">$' + (s.ccTotal-s.settled).toLocaleString() + '</div></div>';
+  ['台新','星展','聯邦'].forEach(function(b){
+    var p2 = getCurrentPeriod();
+    var bt = data.transactions.filter(function(t){return inPeriod(t,p2)&&t.bank===b;}).reduce(function(sum,t){return sum+t.amount;},0);
+    if (bt) html += '<div class="ov-row"><div class="ov-row-name">' + bankEmoji(b) + ' ' + b + '</div><div class="ov-row-val">$' + bt.toLocaleString() + '</div></div>';
+  });
+  html += '</div>';
+
+  document.getElementById('overview-content').innerHTML = html;
+}
+
+// ── SETTINGS ─────────────────────────────────────────
+function clearMonthOverrides() {
+  var p = getSettingsPeriod();
+  var key = periodKey(p);
+  if (data.monthlyOverrides[key]) {
+    delete data.monthlyOverrides[key];
+    save();
+    renderSettings();
+    renderOverview();
+    showToast('🗑 已清空 ' + periodShort(p) + ' 的覆蓋值');
+  } else {
+    showToast('本月沒有覆蓋值');
+  }
+}
+
+var currentSettingsTab = 'default';
+
+function switchSettingsTab(tab) {
+  currentSettingsTab = tab;
+  var defBtn = document.getElementById('stab-default');
+  var monBtn = document.getElementById('stab-month');
+  var defContent = document.getElementById('stab-content-default');
+  var monContent = document.getElementById('stab-content-month');
+  if (!defBtn) return;
+  defBtn.style.background = tab === 'default' ? 'var(--matcha)' : 'transparent';
+  defBtn.style.color = tab === 'default' ? 'white' : 'var(--text2)';
+  monBtn.style.background = tab === 'month' ? 'var(--matcha)' : 'transparent';
+  monBtn.style.color = tab === 'month' ? 'white' : 'var(--text2)';
+  defContent.style.display = tab === 'default' ? '' : 'none';
+  monContent.style.display = tab === 'month' ? '' : 'none';
+}
+
+function changeSettingsMonth(delta) {
+  settingsMonthOffset += delta;
+  renderSettings();
+}
+
+function renderSettings() {
+  var p = getSettingsPeriod();
+  var pLabel = periodShort(p);
+  var isCurrentMonth = (settingsMonthOffset === 0);
+  var key = periodKey(p);
+
+  // ── DEFAULT TAB: income ──
+  var hd = '';
+  data.budgetAllocs.filter(function(a){return a.isIncome||a.allocType==='income';}).forEach(function(a){
+    hd += '<div class="set-row">';
+    hd += '<div class="set-row-top"><div class="set-name">💴 ' + a.name + '</div></div>';
+    hd += '<div class="set-row-bottom"><input class="set-input" type="number" inputmode="decimal" value="' + (a.amount||0) + '" data-aid="' + a.id + '" onchange="handleDefaultAllocInput(this)"></div>';
+    hd += '</div>';
+  });
+  var defEl = document.getElementById('income-default-settings');
+  if (defEl) defEl.innerHTML = hd;
+
+  // ── DEFAULT TAB: alloc list ──
+  hd = '';
+  data.budgetAllocs.filter(function(a){return !a.isIncome && a.allocType!=='income';}).forEach(function(a){
+    var atype = a.allocType || 'other';
+    var icon = atype==='saving'?'🏦':atype==='reserve'?'💾':'💸';
+    hd += '<div class="set-row">';
+    hd += '<div class="set-row-top"><div class="set-name">' + icon + ' ' + a.name + '</div></div>';
+    hd += '<div class="set-row-bottom">';
+    hd += '<input class="set-input" type="number" inputmode="decimal" value="' + (a.amount||0) + '" data-aid="' + a.id + '" onchange="handleDefaultAllocInput(this)">';
+    hd += '<button class="type-btn' + (atype==='saving'?' type-active':'') + '" data-aid="' + a.id + '" data-t="saving" onclick="handleAllocType(this)">🏦</button>';
+    hd += '<button class="type-btn' + (atype==='reserve'?' type-active':'') + '" data-aid="' + a.id + '" data-t="reserve" onclick="handleAllocType(this)">💾</button>';
+    hd += '<button class="type-btn' + (atype==='other'?' type-active':'') + '" data-aid="' + a.id + '" data-t="other" onclick="handleAllocType(this)">💸</button>';
+    hd += '<button class="icon-btn del" data-aid="' + a.id + '" onclick="removeAllocById(this)">🗑</button>';
+    hd += '</div></div>';
+  });
+  var defAllocEl = document.getElementById('budget-alloc-default-list');
+  if (defAllocEl) defAllocEl.innerHTML = hd;
+
+  // ── MONTH NAV ──
+  var navHtml = '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--matcha-l);border-bottom:1.5px solid var(--matcha-m)">';
+  navHtml += '<button onclick="changeSettingsMonth(-1)" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--matcha);padding:0 8px">‹</button>';
+  navHtml += '<span style="font-size:13px;font-weight:700;color:var(--matcha)">' + pLabel + (isCurrentMonth?' （本期）':'') + '</span>';
+  navHtml += '<button onclick="changeSettingsMonth(1)" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--matcha);padding:0 8px">›</button>';
+  navHtml += '</div>';
+  navHtml += '<button onclick="clearMonthOverrides()" style="width:100%;padding:8px;background:none;border:none;border-bottom:1.5px solid var(--matcha-m);font-size:12px;font-weight:600;color:var(--sakura);cursor:pointer;font-family:inherit">🗑 清空本月調整（回到預設值）</button>';
+
+  // ── MONTH TAB: income override ──
+  var hm = '';
+  data.budgetAllocs.filter(function(a){return a.isIncome||a.allocType==='income';}).forEach(function(a){
+    var hasOverride = data.monthlyOverrides[key] && data.monthlyOverrides[key][a.id] !== undefined;
+    var val = getAllocAmount(a.id, p);
+    hm += '<div class="set-row">';
+    hm += '<div class="set-row-top"><div class="set-name">💴 ' + a.name + (hasOverride?' <span style="font-size:10px;color:var(--kinari)">✏️</span>':'') + '</div></div>';
+    hm += '<div class="set-row-bottom"><input class="set-input" type="number" inputmode="decimal" value="' + val + '" data-aid="' + a.id + '" onchange="handleAllocInput(this)" style="' + (hasOverride?'border-color:var(--kinari)':'') + '"></div>';
+    hm += '</div>';
+  });
+  var incomeEl = document.getElementById('income-settings');
+  if (incomeEl) incomeEl.innerHTML = navHtml + hm;
+
+  // ── MONTH TAB: alloc override ──
+  hm = '';
+  data.budgetAllocs.filter(function(a){return !a.isIncome && a.allocType!=='income';}).forEach(function(a){
+    var atype = a.allocType || 'other';
+    var icon = atype==='saving'?'🏦':atype==='reserve'?'💾':'💸';
+    var hasOverride = data.monthlyOverrides[key] && data.monthlyOverrides[key][a.id] !== undefined;
+    var val = getAllocAmount(a.id, p);
+    hm += '<div class="set-row">';
+    hm += '<div class="set-row-top"><div class="set-name">' + icon + ' ' + a.name + (hasOverride?' <span style="font-size:10px;color:var(--kinari)">✏️</span>':'') + '</div></div>';
+    hm += '<div class="set-row-bottom">';
+    hm += '<input class="set-input" type="number" inputmode="decimal" value="' + val + '" data-aid="' + a.id + '" onchange="handleAllocInput(this)" style="' + (hasOverride?'border-color:var(--kinari)':'') + '">';
+    hm += '<button class="icon-btn" style="background:var(--bg2);font-size:11px" data-aid="' + a.id + '" onclick="resetOneOverride(this)" title="重設為預設值">↩</button>';
+    hm += '</div></div>';
+  });
+  var allocEl = document.getElementById('budget-alloc-list');
+  if (allocEl) allocEl.innerHTML = hm;
+
+  // Extra incomes
+  var h = '';
+  (data.extraIncomes||[]).sort(function(a,b){return b.date.localeCompare(a.date);}).forEach(function(e){
+    var allocated = (e.allocations||[]).reduce(function(s,a){return s+a.amount;},0);
+    var unalloc = e.amount - allocated;
+    h += '<div class="set-row">';
+    h += '<div class="set-row-top"><div class="set-name">🎁 ' + e.name + '</div><button class="icon-btn del" data-eid="' + e.id + '" onclick="removeExtraById(this)">🗑</button></div>';
+    h += '<div class="set-row-bottom" style="flex-direction:column;align-items:flex-start;gap:6px">';
+    h += '<div style="display:flex;justify-content:space-between;width:100%"><span style="font-size:13px;color:var(--text2)">' + e.date.slice(0,7).replace('-','/') + '</span><span style="font-size:15px;font-weight:700;color:var(--matcha)">+$' + e.amount.toLocaleString() + '</span></div>';
+    if (unalloc > 0) h += '<div style="font-size:11px;color:var(--kinari);background:var(--kinari-l);padding:3px 8px;border-radius:8px">⚠️ 未分配 $' + unalloc.toLocaleString() + '</div>';
+    else h += '<div style="font-size:11px;color:var(--matcha);background:var(--matcha-l);padding:3px 8px;border-radius:8px">✅ 已全數分配</div>';
+    h += '<button data-eid="' + e.id + '" onclick="openExtraAllocById(this)" style="font-size:12px;padding:5px 10px;border-radius:7px;border:1.5px dashed var(--border);background:var(--bg);cursor:pointer;font-family:inherit;color:var(--text2)">✏️ 管理分配</button>';
+    h += '</div></div>';
+  });
+  // Cards list
+  var ch = '';
+  (data.cards||[]).forEach(function(c){
+    var isCat = currentTheme === 'cat';
+    var cardIcon = isCat && c.catKey
+      ? '<span style="display:inline-block;width:28px;height:28px;vertical-align:middle;line-height:0">' + scaleSvg(getCatSvg(c.catKey)) + '</span>'
+      : '<span style="font-size:20px">' + c.emoji + '</span>';
+    ch += '<div class="set-row">';
+    ch += '<div class="set-row-top"><div class="set-name" style="gap:8px">' + cardIcon + c.name + '</div>';
+    ch += '<button class="icon-btn del" data-cid="' + c.id + '" onclick="removeCard(this)">🗑</button></div>';
+    ch += '</div>';
+  });
+  var cardsEl = document.getElementById('cards-list');
+  if (cardsEl) cardsEl.innerHTML = ch || '<div style="padding:12px 14px;font-size:13px;color:var(--text3)">尚無信用卡</div>';
+
+  var extraEl = document.getElementById('extra-income-list');
+  if (extraEl) extraEl.innerHTML = h || '<div style="padding:12px 14px;font-size:13px;color:var(--text3)">尚無額外收入</div>';
+
+  // Fixed expenses
+  h = '';
+  data.fixedExpenses.forEach(function(e){
+    var isOn = e.included !== false;
+    h += '<div class="set-row">';
+    h += '<div class="set-row-top"><div class="set-name">📌 ' + e.name + '</div>';
+    h += '<div class="toggle-wrap"><span class="toggle-label">' + (isOn?'計入':'不計') + '</span>';
+    h += '<label class="toggle"><input type="checkbox" ' + (isOn?'checked':'') + ' data-feid="' + e.id + '" onchange="handleFixedToggle(this)"><span class="toggle-slider"></span></label></div></div>';
+    h += '<div class="set-row-bottom"><input class="set-input" type="number" inputmode="decimal" value="' + (e.amount||0) + '" data-feid="' + e.id + '" onchange="handleFixedAmount(this)">';
+    h += '<button class="icon-btn del" data-feid="' + e.id + '" onclick="removeFixedById(this)">🗑</button></div>';
+    h += '<input type="text" placeholder="備注（例：每季繳）" value="' + (e.note||'') + '" data-feid="' + e.id + '" onchange="handleFixedNote(this)" style="margin-top:7px;font-size:12px;color:var(--text2);background:var(--bg);border:1.5px dashed var(--border);border-radius:7px;padding:7px 10px;width:100%;font-family:inherit">';
+    h += '</div>';
+  });
+  var fixedEl = document.getElementById('fixed-expense-list');
+  if (fixedEl) fixedEl.innerHTML = h;
+
+  updateAllocRemainLabel();
+}
+
+
+function updateAllocRemainLabel() {
+  var p = getSettingsPeriod();
+  var income = 0;
+  data.budgetAllocs.forEach(function(a){
+    if (a.isIncome || a.allocType === 'income') income += getAllocAmount(a.id, p);
+  });
+  var totalAlloc = data.budgetAllocs.filter(function(a){
+    return !a.isIncome && a.allocType !== 'income';
+  }).reduce(function(s,a){ return s + getAllocAmount(a.id, p); }, 0);
+  var remain = income - totalAlloc;
+  var el = document.getElementById('alloc-remain-label');
+  if (!el) return;
+  el.textContent = '剩 NT$' + remain.toLocaleString();
+  el.style.background = remain >= 0 ? 'var(--matcha-l)' : 'var(--sakura-l)';
+  el.style.color = remain >= 0 ? 'var(--matcha)' : 'var(--sakura)';
+}
+
+function handleDefaultAllocInput(el) {
+  // Updates the base default value (a.amount)
+  var aid = parseInt(el.getAttribute('data-aid'));
+  var a = data.budgetAllocs.find(function(x){return x.id==aid;});
+  if (a) { a.amount = parseFloat(el.value)||0; save(); renderOverview(); updateAllocRemainLabel(); }
+}
+
+function resetOneOverride(el) {
+  var aid = el.getAttribute('data-aid');
+  var p = getSettingsPeriod();
+  var key = periodKey(p);
+  if (data.monthlyOverrides[key]) {
+    delete data.monthlyOverrides[key][aid];
+    save(); renderSettings(); renderOverview();
+    showToast('↩ 已重設為預設值');
+  }
+}
+
+function handleAllocInput(el) {
+  var aid = el.getAttribute('data-aid');
+  var p = getSettingsPeriod();
+  setAllocOverride(aid, p, el.value);
+  renderOverview();
+  updateAllocRemainLabel();
+}
+function handleAllocType(el) {
+  var aid = parseInt(el.getAttribute('data-aid'));
+  var t = el.getAttribute('data-t');
+  var a = data.budgetAllocs.find(function(x){return x.id==aid;});
+  if (a) { a.allocType = t; save(); renderSettings(); }
+}
+function handleFixedToggle(el) {
+  var id = parseInt(el.getAttribute('data-feid'));
+  var e = data.fixedExpenses.find(function(x){return x.id==id;});
+  if (e) { e.included = el.checked; save(); renderSettings(); renderOverview(); }
+}
+function handleFixedAmount(el) {
+  var id = parseInt(el.getAttribute('data-feid'));
+  var e = data.fixedExpenses.find(function(x){return x.id==id;});
+  if (e) { e.amount = parseFloat(el.value)||0; save(); renderOverview(); }
+}
+function handleFixedNote(el) {
+  var id = parseInt(el.getAttribute('data-feid'));
+  var e = data.fixedExpenses.find(function(x){return x.id==id;});
+  if (e) { e.note = el.value; save(); }
+}
+function removeFixedById(el) {
+  var id = parseInt(el.getAttribute('data-feid'));
+  data.fixedExpenses = data.fixedExpenses.filter(function(x){return x.id!=id;});
+  save(); renderSettings(); renderOverview();
+}
+function removeAllocById(el) {
+  var aid = parseInt(el.getAttribute('data-aid'));
+  data.budgetAllocs = data.budgetAllocs.filter(function(x){return x.id!=aid;});
+  save(); renderSettings(); renderOverview();
+}
+function addFixedExpense() {
+  var name = document.getElementById('new-expense-name').value.trim();
+  var amount = parseFloat(document.getElementById('new-expense-amount').value)||0;
+  if (!name) { showToast('⚠️ 請輸入項目名稱'); return; }
+  data.fixedExpenses.push({ id: Date.now(), name: name, amount: amount, included: true, note: '' });
+  save();
+  document.getElementById('new-expense-name').value = '';
+  document.getElementById('new-expense-amount').value = '';
+  renderSettings(); renderOverview();
+}
+function addBudgetAlloc() {
+  var name = document.getElementById('new-alloc-name').value.trim();
+  var amount = parseFloat(document.getElementById('new-alloc-amount').value)||0;
+  if (!name) { showToast('⚠️ 請輸入項目名稱'); return; }
+  var p = getSettingsPeriod();
+  var newId = Date.now();
+  data.budgetAllocs.push({ id: newId, name: name, amount: amount, allocType: 'other' });
+  setAllocOverride(newId, p, amount);
+  save();
+  document.getElementById('new-alloc-name').value = '';
+  document.getElementById('new-alloc-amount').value = '';
+  renderSettings(); renderOverview();
+}
+function addExtraIncome() {
+  var name = document.getElementById('new-extra-name').value.trim();
+  var amount = parseFloat(document.getElementById('new-extra-amount').value)||0;
+  var date = document.getElementById('new-extra-date').value;
+  if (!name) { showToast('⚠️ 請輸入名稱'); return; }
+  if (!amount||amount<=0) { showToast('⚠️ 請輸入金額'); return; }
+  if (!date) { showToast('⚠️ 請選擇日期'); return; }
+  var ei = { id: Date.now(), name: name, amount: amount, date: date, allocations: [] };
+  data.extraIncomes.push(ei);
+  save();
+  document.getElementById('new-extra-name').value = '';
+  document.getElementById('new-extra-amount').value = '';
+  renderSettings(); renderOverview();
+  showToast('🎁 已新增額外收入');
+  openExtraAlloc(ei.id);
+}
+function removeExtraById(el) {
+  var eid = el.getAttribute('data-eid');
+  data.extraIncomes = (data.extraIncomes||[]).filter(function(x){return x.id!=eid;});
+  save(); renderSettings(); renderOverview();
+}
+
+// ── EXTRA ALLOC MODAL ────────────────────────────────
+function openExtraAlloc(id) {
+  var e = (data.extraIncomes||[]).find(function(x){return x.id==id;});
+  if (!e) return;
+  editingExtraId = id;
+  var allocated = (e.allocations||[]).reduce(function(s,a){return s+a.amount;},0);
+  var unalloc = e.amount - allocated;
+  var h = '<div class="modal-handle"></div>';
+  h += '<div class="modal-title">🎁 ' + e.name + ' 分配</div>';
+  h += '<div style="background:var(--kinari-l);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:13px">';
+  h += '<div style="display:flex;justify-content:space-between"><span>總金額</span><span>$' + e.amount.toLocaleString() + '</span></div>';
+  h += '<div style="display:flex;justify-content:space-between;margin-top:4px"><span>已分配</span><span id="alloc-done">$' + allocated.toLocaleString() + '</span></div>';
+  h += '<div style="display:flex;justify-content:space-between;margin-top:4px"><span>未分配</span><span id="alloc-remain" style="font-weight:700;color:' + (unalloc>0?'var(--kinari)':'var(--matcha)') + '">$' + unalloc.toLocaleString() + '</span></div>';
+  h += '</div>';
+  var allocs = e.allocations || [];
+  for (var ai = 0; ai < allocs.length; ai++) {
+    var al = allocs[ai];
+    h += '<div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">';
+    h += '<span>' + (al.type==='saving'?'🏦':'💾') + '</span>';
+    h += '<input type="text" value="' + (al.name||'').replace(/"/g,'&quot;') + '" data-eid="' + id + '" data-ai="' + ai + '" data-f="name" onchange="allocChange(this)" style="flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:14px;font-family:inherit;background:var(--bg)">';
+    h += '<input type="number" value="' + al.amount + '" inputmode="decimal" data-eid="' + id + '" data-ai="' + ai + '" data-f="amount" onchange="allocChange(this)" style="width:90px;padding:7px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:14px;font-family:inherit;text-align:right;background:var(--bg)">';
+    h += '<select data-eid="' + id + '" data-ai="' + ai + '" data-f="type" onchange="allocChange(this)" style="padding:7px 4px;border:1.5px solid var(--border);border-radius:7px;font-size:12px;font-family:inherit;background:var(--bg);-webkit-appearance:none">';
+    h += '<option value="saving"' + (al.type==='saving'?' selected':'') + '>🏦存款</option>';
+    h += '<option value="reserve"' + (al.type==='reserve'?' selected':'') + '>💾預存</option>';
+    h += '</select>';
+    h += '<button data-eid="' + id + '" data-ai="' + ai + '" onclick="allocRemove(this)" style="width:28px;height:28px;border:none;background:var(--sakura-l);border-radius:7px;cursor:pointer">✕</button>';
+    h += '</div>';
+  }
+  h += '<button data-eid="' + id + '" onclick="allocAdd(this)" style="width:100%;padding:10px;border:1.5px dashed var(--border);background:var(--bg);border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;color:var(--text2);margin-bottom:8px">＋ 新增分配項目</button>';
+  h += '<div class="modal-actions"><button class="btn-cancel" onclick="closeExtraAlloc()">關閉</button></div>';
+  document.getElementById('extra-alloc-body').innerHTML = h;
+  document.getElementById('extra-alloc-modal').classList.add('open');
+}
+function closeExtraAlloc() {
+  document.getElementById('extra-alloc-modal').classList.remove('open');
+  editingExtraId = null; renderAll();
+}
+function allocChange(el) {
+  var eid = el.getAttribute('data-eid');
+  var ai = parseInt(el.getAttribute('data-ai'));
+  var field = el.getAttribute('data-f');
+  var e = (data.extraIncomes||[]).find(function(x){return x.id==eid;});
+  if (!e || !e.allocations || !e.allocations[ai]) return;
+  e.allocations[ai][field] = (field==='amount') ? (parseFloat(el.value)||0) : el.value;
+  save();
+  var done = e.allocations.reduce(function(s,a){return s+a.amount;},0);
+  var rem = e.amount - done;
+  var dEl = document.getElementById('alloc-done');
+  var rEl = document.getElementById('alloc-remain');
+  if (dEl) dEl.textContent = '$' + done.toLocaleString();
+  if (rEl) { rEl.textContent = '$' + rem.toLocaleString(); rEl.style.color = rem>0?'var(--kinari)':'var(--matcha)'; }
+}
+function allocAdd(el) {
+  var eid = el.getAttribute('data-eid');
+  var e = (data.extraIncomes||[]).find(function(x){return x.id==eid;});
+  if (!e) return;
+  if (!e.allocations) e.allocations = [];
+  e.allocations.push({name:'',amount:0,type:'saving'});
+  save(); openExtraAlloc(eid);
+}
+function allocRemove(el) {
+  var eid = el.getAttribute('data-eid');
+  var ai = parseInt(el.getAttribute('data-ai'));
+  var e = (data.extraIncomes||[]).find(function(x){return x.id==eid;});
+  if (!e) return;
+  e.allocations.splice(ai,1);
+  save(); openExtraAlloc(eid);
+}
+function openExtraAllocById(el) { openExtraAlloc(el.getAttribute('data-eid')); }
+
+// ── CHART ────────────────────────────────────────────
+function changeYear(delta) { currentChartYear += delta; renderChart(); }
+
+function renderChart() {
+  document.getElementById('chart-year-label').textContent = currentChartYear + ' 年';
+  var months = [];
+  var incomeData=[], savingsData=[], spendingData=[];
+  var labels = [];
+  for (var mi = 1; mi <= 12; mi++) {
+    var p = { year: currentChartYear, month: mi };
+    var s = getPeriodSummary(p);
+    labels.push(mi + '月');
+    incomeData.push(s.income);
+    savingsData.push(s.savings + s.reserve);
+    spendingData.push(s.ccTotal + s.cashTotal);
+    months.push({ m: mi, income: s.income, savings: s.savings+s.reserve, spending: s.ccTotal+s.cashTotal });
+  }
+
+  var canvas = document.getElementById('year-chart');
+  if (!canvas) return;
+  var ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  var dpr = window.devicePixelRatio || 1;
+  var rect = canvas.parentElement.getBoundingClientRect();
+  var W = (rect.width > 32 ? rect.width : window.innerWidth - 48) - 16;
+  var H = 240;
+  canvas.width = Math.round(W * dpr);
+  canvas.height = Math.round(H * dpr);
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.scale(dpr, dpr);
+
+  var allVals = incomeData.concat(savingsData).concat(spendingData);
+  var maxVal = Math.max.apply(null, allVals) || 1;
+  var padT=16, padB=28, padL=52, padR=12;
+  var chartW = W - padL - padR;
+  var chartH = H - padT - padB;
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.strokeStyle = '#DDD9CF'; ctx.lineWidth = 1;
+  var gi;
+  for (gi = 0; gi <= 4; gi++) {
+    var gy = padT + (chartH/4)*gi;
+    ctx.beginPath(); ctx.moveTo(padL, gy); ctx.lineTo(padL+chartW, gy); ctx.stroke();
+    var gval = Math.round(maxVal*(1-gi/4));
+    ctx.fillStyle='#A89F8C'; ctx.font='10px -apple-system,sans-serif'; ctx.textAlign='right';
+    ctx.fillText(gval>=10000?(gval/10000).toFixed(0)+'萬':gval.toLocaleString(), padL-4, gy+4);
+  }
+  ctx.fillStyle='#A89F8C'; ctx.textAlign='center'; ctx.font='10px -apple-system,sans-serif';
+  var xi;
+  for (xi = 0; xi < 12; xi++) {
+    ctx.fillText(labels[xi], padL+(xi/11)*chartW, H-6);
+  }
+
+  function drawLine(arr, color, dash) {
+    var di, dx, dy;
+    ctx.beginPath(); ctx.strokeStyle=color; ctx.lineWidth=2.5;
+    if (dash) ctx.setLineDash(dash); else ctx.setLineDash([]);
+    for (di=0; di<arr.length; di++) {
+      dx = padL+(di/11)*chartW; dy = padT+chartH*(1-arr[di]/maxVal);
+      if (di===0) ctx.moveTo(dx,dy); else ctx.lineTo(dx,dy);
+    }
+    ctx.stroke(); ctx.setLineDash([]);
+    for (di=0; di<arr.length; di++) {
+      if (arr[di]===0) continue;
+      dx=padL+(di/11)*chartW; dy=padT+chartH*(1-arr[di]/maxVal);
+      ctx.beginPath(); ctx.arc(dx,dy,3.5,0,Math.PI*2);
+      ctx.fillStyle=color; ctx.fill();
+    }
+  }
+  drawLine(incomeData,'#6A8C69',[]);
+  drawLine(savingsData,'#6B8FAB',[5,3]);
+  drawLine(spendingData,'#D9697A',[]);
+
+  var listHtml = '';
+  for (var mii=0; mii<12; mii++) {
+    var mo = months[mii];
+    if (mo.income===0&&mo.savings===0&&mo.spending===0) continue;
+    var bal = mo.income - mo.spending - mo.savings;
+    listHtml += '<div class="ov-card" style="margin-top:8px">';
+    listHtml += '<div class="ov-card-header"><div class="ov-card-title">' + (mii+1) + ' 月</div><div class="ov-card-total ' + (bal>=0?'val-green':'val-rose') + '">' + (bal>=0?'+':'') + '$' + bal.toLocaleString() + '</div></div>';
+    listHtml += '<div class="ov-row"><div class="ov-row-name">💴 收入</div><div class="ov-row-val val-green">$' + mo.income.toLocaleString() + '</div></div>';
+    listHtml += '<div class="ov-row"><div class="ov-row-name">💾🏦 存款+預存</div><div class="ov-row-val val-blue">$' + mo.savings.toLocaleString() + '</div></div>';
+    listHtml += '<div class="ov-row"><div class="ov-row-name">💸 實際支出</div><div class="ov-row-val val-rose">$' + mo.spending.toLocaleString() + '</div></div>';
+    listHtml += '</div>';
+  }
+  document.getElementById('chart-monthly-list').innerHTML = listHtml || '<div class="empty-state"><div class="empty-icon">📊</div><div class="empty-text">本年度還沒有資料</div></div>';
+}
+
+// ── BACKUP ───────────────────────────────────────────
+function exportData() {
+  var blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  var today = new Date();
+  a.href=url; a.download='okanesho-backup-'+today.getFullYear()+pad(today.getMonth()+1)+pad(today.getDate())+'.json';
+  a.click(); URL.revokeObjectURL(url); showToast('📤 備份已下載');
+}
+function importData(e) {
+  var file = e.target.files[0]; if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    try { data=JSON.parse(ev.target.result); save(); renderAll(); showToast('📥 備份已匯入'); }
+    catch(err) { showToast('⚠️ 檔案格式錯誤'); }
+  };
+  reader.readAsText(file); e.target.value='';
+}
+
+// ── NAV ──────────────────────────────────────────────
+// ── CAT THEME ──────────────────────────────────────────
+var CAT_SVGS = {
+  cat1:    '<svg viewBox="0 0 320 320" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M39.1573 96C33.0971 108 26.51 137.249 35.1574 161.5C36.8506 166.248 38.9216 170.539 41.2572 174.444C45.1498 159.572 49.7863 144.106 54.5 133.5C58.973 123.436 101.727 107.4 105.267 106.086C105.437 106.023 105.594 106.018 105.773 106.053L126.5 110.039C126.5 110.039 137 102.5 141.5 101C143.869 100.211 149.69 100.503 157.435 101.486C160.44 92.9176 161.616 85.1074 160 80.5002C157.023 72.0129 156.208 74.7903 154.895 79.2654C154.12 81.9084 153.171 85.1437 151.5 87.0002C146.861 92.1541 139.5 91.0002 136.5 84.0002C133.857 77.8324 139 69.489 140 68.0001C143.694 62.5 153.536 59.93 163.5 63.0001C175.478 66.6906 179.934 77.5121 181 90.0002C181.462 95.4118 181.035 100.466 179.947 105.164C201.468 109.221 226.063 115.008 238 118.5C260 124.938 264 184.5 235.5 179.25V226.828C235.5 227.235 235.254 227.601 234.878 227.754L184.026 248.502C207.485 252.31 235.708 249.612 259.657 228C277.219 212.152 286.323 198.585 288.157 175C290.239 148.225 279.67 123.5 269.657 104C255.838 77.0876 233.657 63.0306 214.657 54.5C195.657 45.9694 165.157 40 137.157 40C109.157 40 84.6572 51.5001 70.1573 60.5C55.6574 69.4999 45.2174 84.0001 39.1573 96Z" fill="#B2AB73"></path><path d="M173 253.001L234.878 227.754C235.254 227.601 235.5 227.235 235.5 226.828V179.25M173 253.001C175 232.5 180.099 173.033 191.5 162C207 147 235.5 131 235.5 131M173 253.001C157.617 252.324 144.126 251.309 131.641 249.742M235.5 131L213.5 126.77M235.5 131V179.25M126.5 110.039L105.773 106.053C105.594 106.019 105.437 106.023 105.267 106.087C101.727 107.4 58.973 123.436 54.5 133.5C43.3014 158.697 32.5383 211.327 31.1506 218.245C31.0596 218.698 31.2971 219.136 31.7182 219.328C40.7109 223.428 49.0791 227.041 57.0708 230.225M126.5 110.039C126.5 110.039 137 102.5 141.5 101C143.869 100.211 149.69 100.503 157.435 101.486M126.5 110.039C126.5 110.039 111.297 114.904 97 123.101M126.5 110.039L151.541 114.854M213.5 126.77C213.5 126.77 181.334 140.709 168 157.5C166.143 159.839 164.444 162.924 162.895 166.5M213.5 126.77C219.385 118.688 223.691 115.483 238 118.5M213.5 126.77L174.329 119.237M238 118.5C260 124.938 264 184.5 235.5 179.25M238 118.5C226.063 115.008 201.468 109.221 179.947 105.164M97 123.101C89.7246 127.272 82.6838 132.306 78 138C68.3824 149.693 62.32 197.7 61.5772 203.851C61.529 204.25 61.7272 204.629 62.0774 204.826C62.9254 205.303 63.7664 205.77 64.6011 206.227M97 123.101L94 162.324M162.895 166.5C154.216 186.549 150.26 222.066 149.601 228.49C149.543 229.047 149.044 229.45 148.488 229.387C145.643 229.065 142.899 228.742 140.246 228.413M162.895 166.5C154.913 154.181 143.607 153.05 138.853 152.069C138.056 151.904 138.028 151.034 138.759 150.675C144.651 147.785 163.904 137.306 174.329 119.237M143.5 219C143.5 219 142.298 222.76 140.246 228.413M116 171.5C118.369 174.903 119.152 177.083 119.5 181.5M110 179.5C114.94 176.171 118.03 174.902 124 173.5M168 229.501C168.791 232.565 168.602 234.019 168 236.5M155.5 244.5C157.3 243.83 158.84 243.782 162.895 244.5M219 208.5C218.922 210.52 218.91 211.549 219 213M226 202C225.876 203.758 225.859 204.743 226 206.5M226 215C226.253 217.431 226.194 218.318 226 219M44 202.5C43.3935 203.589 42.9423 205.071 42 209M47.5 213C46.8247 215.701 46.3733 216.548 45.5 217.5M94 162.324C103.054 153.783 113.831 146.668 126.5 142C135.711 138.607 144.977 127.222 151.541 114.854M94 162.324C80.6182 174.947 71.0004 190.682 64.6011 206.227M64.6011 206.227C61.2187 214.442 58.7355 222.605 57.0708 230.225M96.7681 220.024C99.2346 215.541 101.343 212.747 103 213C104.697 213.259 105.059 216.848 104.79 222.243M96.7681 220.024C99.3855 220.821 102.05 221.557 104.79 222.243M96.7681 220.024C93.8768 225.28 90.4931 232.858 86.7662 240.571M104.79 222.243C104.492 228.202 103.425 236.365 102.54 244.678M140.246 228.413C138.144 234.205 135.149 241.984 131.641 249.742M57.0708 230.225C52.1918 252.561 54.3442 270.247 61.5 271C70.4987 271.947 79.3178 255.988 86.7662 240.571M86.7662 240.571C92.0227 242.109 97.2515 243.471 102.54 244.678M102.54 244.678C100.694 262.014 99.6386 280 108 280C115.958 280 124.781 264.911 131.641 249.742M213.5 68.0002C213.5 68.0002 226 58.5002 230 68.0002C234 77.5002 216 84.0003 216 84.0003M216 92.0002V94.0002M157.435 101.486C160.44 92.9177 161.616 85.1075 160 80.5003C155.265 67.0004 156 82.0003 151.5 87.0003C146.861 92.1542 139.5 91.0003 136.5 84.0003C133.857 77.8325 139 69.4891 140 68.0002C143.694 62.5002 153.536 59.9301 163.5 63.0002C175.478 66.6908 179.934 77.5122 181 90.0003C181.462 95.4119 181.035 100.466 179.947 105.164M157.435 101.486C155.903 105.853 153.896 110.417 151.541 114.854M179.947 105.164C178.762 110.278 176.792 114.969 174.329 119.237M224.5 163.536V170.813C224.5 171.227 224.245 171.598 223.859 171.747L199.859 180.978C199.204 181.229 198.5 180.746 198.5 180.044V174.151C198.5 173.756 198.733 173.397 199.095 173.237L223.095 162.622C223.757 162.329 224.5 162.813 224.5 163.536Z" stroke="#000000" stroke-width="5" stroke-linecap="round"></path></svg>',
+  fox:     '<svg viewBox="0 0 320 320" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M251.823 153.742C251.839 153.102 251.847 152.461 251.847 151.818C251.847 129.392 241.697 108.844 224.836 92.8988C219.383 94.5644 215.912 97.3113 213.689 100.307C213.785 99.4734 213.888 98.7118 214 98.0861C213.988 98.0747 213.991 98.0551 214.009 98.0276C214.303 95.9693 211.049 92.2346 208.034 88.7745C204.715 84.9649 201.685 81.4881 204 80.9474C205.165 80.6754 206.862 80.5056 208.863 80.4492C188.943 67.6614 163.563 60 135.924 60C71.9008 60 20 101.108 20 151.818C20 173.389 29.3907 193.222 45.1106 208.892C48.9914 197.111 53.3784 184.257 54.3309 183.353C56.1144 181.66 74.6852 174.89 74.6852 174.89C74.3566 173.169 74.1357 171.419 74.8405 169.39C75.0047 168.917 75.1542 168.463 75.298 168.027C76.2271 165.208 76.9157 163.119 79.745 161.35C82.0371 159.917 84.4052 160.515 86.8364 161.13C89.0315 161.685 91.2781 162.253 93.5667 161.35C99.2691 159.1 103.783 154.038 102.93 148.233C102.662 146.414 101.574 145.841 100.484 145.268C99.396 144.695 98.306 144.122 98.0253 142.309C97.3117 137.703 98.9722 132.439 103.821 131.731C106.523 131.337 109.255 132.475 112.065 133.645C115.285 134.985 118.607 136.369 122.102 135.539C125.026 134.846 123.408 130.89 121.711 126.741C120.304 123.299 118.842 119.725 119.872 117.768C123.624 110.648 125.037 109.814 131.035 106.278C131.453 106.032 131.892 105.773 132.357 105.497C132.728 105.277 133.743 105.336 135.017 105.409C136.804 105.511 139.098 105.643 140.828 105.074C144.137 103.987 144.397 101.205 144.669 98.3C144.923 95.5839 145.187 92.7597 147.962 91.1112C151.869 88.7896 154.7 88.1377 159.108 89.4187C164.702 91.0444 166.894 94.9726 168.025 100.42C168.445 102.438 167.615 104.445 166.823 106.36C165.806 108.819 164.851 111.127 166.688 113.114C167.892 114.416 169.338 114.697 171.024 115.025C171.353 115.089 171.691 115.154 172.038 115.229C174.681 115.803 175.797 113.91 176.937 111.976C178.058 110.073 179.203 108.131 181.847 108.459C185.489 108.912 188.067 110.748 190.764 113.114C193.025 115.096 197 131.412 197 131.412C197.836 130.942 198.958 130.983 200.418 131.037C203.726 131.16 208.771 131.346 216.178 125.808C218.92 123.757 221.644 125.253 224.204 127.5C224.52 127.777 224.835 128.028 225.135 128.265C226.414 129.279 227.406 130.065 226.879 131.731C226.326 133.482 225.619 135.16 224.919 136.826C223.926 139.186 222.943 141.522 222.42 144.002C222.334 144.41 222.243 144.82 222.151 145.23C221.357 148.783 220.553 152.385 223.312 155.003C226.342 157.879 228.901 155.709 232.077 153.016L232.229 152.888C234.025 151.366 233.385 149.498 232.764 147.687C232.128 145.829 231.513 144.032 233.567 142.733C234.904 141.886 237.159 141.056 238.471 141.886C241.992 144.114 246.543 147.97 251.823 153.742ZM250.311 166.802C250.062 166.94 249.812 167.075 249.564 167.209C247.128 168.526 244.886 169.737 245.605 172.351C246.047 173.959 246.95 174.661 248.147 174.92C249.018 172.259 249.742 169.551 250.311 166.802Z" fill="#FBAD36"></path><path d="M68.0418 192.238C68.0418 192.238 73.6394 185.342 74.8405 181.66C75.6679 179.124 75.0934 177.029 74.6852 174.89M198.79 131.731C200.995 132.214 203.683 132.035 205.923 131.731C206.962 131.59 207.796 131.286 208.51 130.885C211.24 129.352 212.216 126.409 216.178 125.808C219.621 125.285 222.116 123.928 224.676 126.175C226.337 127.633 228.689 129.983 227.184 133.792C225.549 137.928 222.557 140.034 221.666 144.265C220.836 148.202 219.089 152.77 222.167 155.691C225.245 158.612 228.822 155.459 232.229 152.888C236.715 149.502 230.811 146.549 233.567 142.733C235.21 140.457 237.719 141.409 239.725 141.885C244.404 142.995 247.834 149.079 254.076 156.273C255.847 158.313 254.982 160.752 254.273 163.309C252.926 168.169 243.907 167.967 245.243 172.83C246.578 177.685 252.356 174.89 257.643 174.89C261.798 174.89 266.561 176.917 266.561 180.391M198.79 131.731C193.628 130.601 194.246 125.61 193.841 120.73C193.606 117.894 193.025 115.096 190.764 113.114C188.067 110.748 185.045 107.608 181.847 108.459C176.669 109.838 177.746 118.06 172.503 116.922C170.377 116.46 168.126 114.67 166.688 113.114C163.422 109.58 168.992 105.703 168.992 100.466C168.992 94.9143 164.702 91.0443 159.108 89.4187C154.7 88.1377 151.83 88.1473 147.922 90.4688C142.18 93.8807 147.23 102.971 140.828 105.074C137.866 106.047 137.106 105.497 132.357 105.497C124.344 105.497 122.492 109.624 119.872 117.768C117.321 125.699 127.452 134.27 122.102 135.539C115.556 137.092 109.618 130.885 103.821 131.731C98.9722 132.439 95.538 135.85 96.2517 140.457C97.0629 145.694 101.77 143.789 102.93 148.233C104.415 153.922 99.2691 159.1 93.5667 161.35C88.7434 163.253 84.1067 158.622 79.745 161.35C76.4777 163.393 75.9099 165.019 74.6852 168.545C73.9804 170.575 74.3566 173.169 74.6852 174.89M198.79 131.731C198.79 131.731 206.382 123.634 210 115.701C210.557 114.48 211.053 113 211.491 111.416M266.561 180.391C266.561 182.929 262.994 192.215 262.994 192.215M266.561 180.391C266.561 180.391 284.841 184.622 286.178 185.468M74.6852 174.89C74.6852 174.89 56.1144 181.66 54.3309 183.353M54.3309 183.353C52.68 184.919 40.7131 222.383 38.9441 227.941C38.8097 228.363 38.9686 228.792 39.3374 229.038C107.64 274.524 263.781 264.127 299.626 225.231C299.867 224.969 299.938 224.627 299.828 224.289C298.322 219.659 287.423 186.256 286.178 185.468M54.3309 183.353C54.3309 183.353 62.8023 192.433 84.6495 198.162C118.535 207.048 164.013 204.932 164.013 204.932M286.178 185.468C262.911 192.981 248.938 195.824 223.312 199.855M110.063 184.199C110.063 184.199 109.618 179.544 117.197 174.89C120.139 173.084 112.413 170.518 113.185 167.274C113.73 164.983 114.984 163.67 117.197 162.619C119.872 161.35 129.235 163.043 132.357 161.35C135.56 159.613 135.604 156.387 135.478 152.888C135.363 149.698 132.799 148.347 133.694 145.271C135.091 140.469 145.732 144.002 145.732 144.002M150.637 122.846C150.637 122.846 156.125 119.966 155.987 116.922C155.911 115.249 152.662 116.181 150.637 115.652C147.725 114.893 145.732 113.114 145.732 113.114M179.618 135.539C179.618 135.539 172.881 130.161 168.025 130.885C164.541 131.405 164.54 133.794 162.229 136.809C160.11 139.573 158.067 142.931 160.892 144.425C164.592 146.382 166.323 140.812 170.255 142.309C173.226 143.441 175.605 144.848 175.605 148.656C175.605 151.3 172.919 152.981 174.713 155.003C176.844 157.405 180.839 152.789 183.185 155.003C185.657 157.337 182.739 163.466 182.739 163.466M153.312 176.159C153.312 176.159 155.438 179.653 155.095 182.929C154.833 185.434 151.932 187.226 152.42 189.7C153.292 194.118 161.12 185.6 165.796 186.314C169.57 186.891 169.61 190.766 173.376 191.392C175.262 191.706 176.517 192.102 178.28 191.392C181.292 190.18 181.847 184.199 181.847 184.199M197.452 172.351C198.522 172.351 202.059 173.621 203.248 174.89C204.437 176.159 197.627 181.734 199.681 185.468C202.891 191.301 213.949 176.159 213.949 176.159M214 97.61C214 97.61 234.567 89.5167 229.5 82.8516C226.098 78.377 219 85.7081 216.178 85.232C213.357 84.7559 208.01 77.6148 204.5 79.043C196.37 82.3507 214 97.61 214 97.61ZM214 97.61C214 97.61 213.813 99.3777 213.43 101.895M200 103.323C205.23 103.389 208.185 103.093 213.43 101.895M213.43 101.895C213.016 104.621 212.373 108.226 211.491 111.416M213.43 101.895C216.313 105.265 218.045 106.869 221.666 108.459M198.79 111.416C201.106 111.964 208.563 111.976 211.491 111.416M211.491 111.416C214.117 114.218 215.157 115.978 216.178 119.51" stroke="#000000" stroke-width="5" stroke-linecap="round"></path></svg>',
+  redcat:  '<svg viewBox="0 0 320 320" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M112.531 26.2808C86.0292 28.2778 30.7139 53.1725 32.0228 94.1736C32.9498 123.21 44.0467 144.46 73.0269 147.09C82.5216 147.952 90.3887 146.117 97.5298 143.754V111.646H47.0243C46.472 111.646 46.0243 111.198 46.0243 110.646V98.1672L91.3706 81.7507C91.4756 81.7127 91.5862 81.6925 91.6978 81.691L256.125 79.5255C248.322 66.1204 234.869 59.7279 216.042 59.7279C205.238 59.7279 193.299 65.2552 184.387 69.3816C177.453 72.5918 172.35 74.9541 171.038 73.2067C167.541 68.552 166.859 64.2155 166.164 59.7961C165.371 54.7547 164.561 49.6055 159.536 43.7532C146.789 28.9061 132.063 24.809 112.531 26.2808ZM262.747 104.255L251.546 111.646H230.044H203.041V206.859L259.547 207.994V222.069C259.547 222.327 259.448 222.575 259.27 222.761L227.544 255.918L119.893 252.488C121.37 265.185 127.531 276.883 139.534 284.872C166.537 302.844 200.855 289.535 209.542 284.872C262.547 256.417 292.051 197.011 287.55 171.551C284.449 154.009 270.334 148.383 258.321 143.596C252.899 141.435 247.905 139.444 244.545 136.606C242.414 134.806 244.682 132.844 248.257 129.753C253.714 125.034 262.216 117.683 262.747 104.255ZM243.045 167.558C243.322 160.113 237.501 153.855 230.044 153.58C222.891 154.417 217.778 160.373 218.043 167.558C218.297 174.451 223.14 180.261 230.044 180.537C237.219 180.824 242.78 174.721 243.045 167.558Z" fill="#E95B47"></path><path d="M46.0241 98.1672L91.3704 81.7506C91.4754 81.7126 91.586 81.6924 91.6977 81.691L281.049 79.1971M46.0241 98.1672V110.646C46.0241 111.198 46.4719 111.646 47.0241 111.646H97.5297M46.0241 98.1672H176.538M250.546 98.1672L281.049 79.1971M250.546 98.1672L251.546 111.646M250.546 98.1672H226.544M281.049 79.1971V91.6384C281.049 91.9744 280.881 92.288 280.6 92.4731L251.546 111.646M251.546 111.646H230.044M97.5297 111.646H203.041M97.5297 111.646V204.74M203.041 111.646H230.044M203.041 111.646V206.859M259.547 207.994V222.069C259.547 222.327 259.448 222.575 259.27 222.761L227.544 255.918M259.547 207.994L227.544 243.438M259.547 207.994L203.041 206.859M227.544 255.918L40.4916 249.958C39.952 249.941 39.5234 249.499 39.5234 248.959V237.447M227.544 255.918V243.438M39.5234 237.447L85.2583 204.693C85.4336 204.567 85.6449 204.501 85.8606 204.506L97.5297 204.74M39.5234 237.447L227.544 243.438M230.044 111.646C230.044 111.646 230.044 137.203 230.044 153.58M230.044 153.58C222.891 154.417 217.778 160.373 218.043 167.558C218.297 174.451 223.14 180.261 230.044 180.537C237.219 180.824 242.78 174.721 243.045 167.558C243.322 160.113 237.501 153.855 230.044 153.58ZM97.5297 204.74V220.044C97.5297 220.318 97.6336 220.574 97.8367 220.759C117.719 238.86 191.452 238.357 202.895 220.706C202.995 220.551 203.041 220.376 203.041 220.192V206.859M172.038 121.131C173.745 120.75 175.217 120.659 180.539 121.131M189.54 123.627C190.638 127.194 190.615 129.05 189.54 132.114M120.032 190.521C120.464 194.218 120.415 196.313 120.032 200.006M109.531 195.014C109.326 196.73 109.288 197.78 109.531 200.006M119.032 212.986C119.237 215.549 119.31 216.94 119.032 218.976M228.544 215.482C232.179 214.376 233.879 214.025 235.545 214.483M224.043 229.959C224.075 228.225 224.842 227.159 228.544 224.967M255.547 136.107C261.99 135.465 264.997 136.17 268.548 140.6M249.046 145.093C254.205 145.836 256.43 147.296 258.047 153.58" stroke="#000000" stroke-width="5" stroke-linecap="round"></path></svg>',
+  cat2:    '<svg viewBox="0 0 320 320" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M39.1573 111C33.0971 123 26.51 152.249 35.1574 176.5C36.7187 180.879 38.6013 184.868 40.7163 188.524C44.7166 173.028 49.566 156.602 54.5 145.5C58.973 135.436 101.727 119.4 105.267 118.086C105.437 118.023 105.594 118.018 105.773 118.053L126.5 122.039C126.5 122.039 136.768 114.666 141.348 113.052C141.451 113.016 141.548 113 141.658 113.002C143.414 113.024 159.634 113.334 179.947 117.163C201.468 121.221 226.063 127.007 238 130.5C260 136.938 264 196.5 235.5 191.25V238.828C235.5 239.235 235.254 239.601 234.878 239.754L178.992 262.555C179.753 262.724 180.476 262.872 181.157 263C205.158 267.5 234.723 265.5 259.657 243C277.219 227.152 286.323 213.585 288.157 190C290.239 163.225 279.67 138.5 269.657 119C255.838 92.0876 233.657 78.0306 214.657 69.5C195.657 60.9694 165.157 55 137.157 55C109.157 55 84.6572 66.5001 70.1573 75.5C55.6574 84.4999 45.2174 99.0001 39.1573 111Z" fill="#B2AB73"></path><path d="M173 265L234.878 239.754C235.254 239.601 235.5 239.235 235.5 238.828V191.25M173 265C175 244.5 180.099 185.033 191.5 174C207 159 235.5 143 235.5 143M173 265C133.951 268.16 79.5108 255.618 31.6724 231.342C31.2741 231.14 31.057 230.711 31.1448 230.273C32.508 223.475 43.2857 170.732 54.5 145.5C58.973 135.436 101.727 119.4 105.267 118.086C105.437 118.023 105.594 118.018 105.773 118.053L126.5 122.039M235.5 143L213.5 138.769M235.5 191.25C260 136.938 264 196.5 235.5 191.25ZM126.5 122.039C126.5 122.039 136.768 114.666 141.348 113.052C141.451 113.016 141.548 113 141.658 113.002C143.414 113.024 159.634 113.334 179.947 117.163C201.468 121.221 226.063 127.007 238 130.5M126.5 122.039L213.5 138.769M126.5 122.039C126.5 122.039 113.106 126.325 99.6385 133.63M213.5 138.769C213.5 138.769 181.334 152.708 168 169.5C166.143 171.839 164.444 174.923 162.895 178.5C157.449 191.079 153.863 209.748 151.784 223.5M213.5 138.769C219.385 130.687 223.691 127.483 238 130.5M90 208.5C112.316 215.524 125.566 218.987 151.784 223.5M90 208.5C78.8134 210.691 73.2621 212.721 64.8741 218.082M90 208.5C93.5998 170.977 96.2553 147.922 99.6385 133.63M151.784 223.5C150.558 231.612 149.856 238.012 149.605 240.442C149.546 241.016 149.006 241.423 148.437 241.333C108.732 235.069 89.8182 229.633 64.8741 218.082M64.8741 218.082C63.9734 217.665 63.0648 217.24 62.1471 216.806C61.76 216.624 61.5312 216.231 61.5826 215.806C62.349 209.47 68.4054 161.665 78 150C83.2486 143.619 91.457 138.067 99.6385 133.63M223.859 183.746L199.859 192.977C199.204 193.229 198.5 192.746 198.5 192.044V186.151C198.5 185.755 198.733 185.397 199.095 185.236L223.095 174.621C223.757 174.329 224.5 174.813 224.5 175.536V182.813C224.5 183.227 224.245 183.598 223.859 183.746Z" stroke="#000000" stroke-width="5" stroke-linecap="round"></path></svg>',
+  snake:   '<svg viewBox="0 0 320 320" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M47.4032 69.9631C24.2609 78.7446 5.07404 99.7563 7.15477 125.14C8.85562 145.889 19.064 156.414 38.6363 161.375C41.0962 161.998 43.5721 162.468 46.0528 162.78V138.957C46.0528 138.78 46.0951 138.613 46.1858 138.461C55.4664 122.874 81.5952 109.936 113.286 101.588C113.14 100.668 112.965 99.7343 112.759 98.7866C109.765 85.011 103.569 76.8423 91.6368 69.9631C76.2703 61.1039 57.7642 66.0315 47.4032 69.9631ZM270.398 198.747C273.71 195.626 276.602 192.293 279.016 188.746C279.122 188.591 279.179 188.41 279.185 188.222L279.654 173.294L281.162 125.293C281.166 125.164 281.145 125.035 281.1 124.915C276.089 111.599 262.113 102.652 243.279 97.3678C253.001 87.3103 264.775 81.8324 279.729 83.9631C301.662 87.0883 314 115.669 314 136.257C314 156.846 305.233 176.038 296.865 183.61C295.1 185.207 293.268 186.718 291.39 188.129C284.709 193.147 277.428 196.898 270.398 198.747Z" fill="#B2AB73"></path><path d="M60.3988 162.981C62.7254 164.121 64.9787 165.188 67.1733 166.185M269.611 144.451C267.797 146.899 266.235 148.641 264.431 150.076M67.1733 166.185C91.6556 177.306 108.817 179.715 138.654 178.666C139.221 178.646 139.7 179.099 139.7 179.666V214.396C139.7 214.899 140.067 215.323 140.566 215.384C182.282 220.514 238.499 207.856 257.379 188.793C257.562 188.609 257.656 188.365 257.656 188.105V154.577C257.656 154.179 257.893 153.82 258.256 153.657C260.808 152.513 262.727 151.432 264.431 150.076M67.1733 166.185C73.7495 151.381 83.965 143.277 94.2713 147.199M99.4518 150.216C97.7336 148.855 96.0012 147.858 94.2713 147.199M94.2713 147.199C107.276 133.347 123.4 129.214 135.317 137.698M141.693 144.039C139.759 141.442 137.616 139.335 135.317 137.698M135.317 137.698C151.984 119.929 173.636 117.304 180.671 130.863M182.738 137.698C182.389 135.085 181.68 132.807 180.671 130.863M180.671 130.863C197.658 124.63 215.983 128.338 220.89 140.745M221.791 151.863C222.518 147.609 222.137 143.897 220.89 140.745M220.89 140.745C240.505 131.163 260.047 133.745 264.431 150.076M155.64 183.157C163.289 177.829 172.371 177.046 179.327 179.863M190.31 197.569C190.901 188.815 186.131 182.618 179.327 179.863M179.327 179.863C191.374 164.015 213.024 166.185 213.024 179.863M53.6243 199.216V205.804M60.3988 192.628V197.569M64.7823 208.275V212.804M117.384 188.098H123.362M130.136 188.098V193.863M257.656 114.392V119.334M266.822 121.804V127.981M25.3307 205C25.3307 205 28.9563 199.278 32.1052 200.059C35.4176 200.88 36.5256 204.862 35.6918 208.275C35.4554 209.242 34.8036 210.07 33.9683 210.765M25.3307 205C25.3307 205 19.9911 198.727 16.1652 200.059C12.7314 201.254 10.3494 204.686 11.3832 208.275C12.1441 210.916 16.4022 212.255 17.9736 212.665C18.3306 212.758 18.6219 213.025 18.727 213.379L21.1001 221.362C21.3475 222.194 22.465 222.338 22.9143 221.595L27.5037 214.007C27.6431 213.777 27.868 213.613 28.1277 213.541C29.1817 213.251 32.0559 212.355 33.9683 210.765M25.3307 205C29.1505 192.087 33.4185 187.991 46.0528 188.118M46.0528 188.118V138.957C46.0528 138.78 46.0951 138.613 46.1858 138.461C74.5034 90.9003 259.683 68.0022 281.1 124.915C281.145 125.035 281.166 125.164 281.162 125.293L279.654 173.294M46.0528 188.118V206.647M33.9683 210.765C39.4914 206.46 42.2438 205.198 46.0528 206.647M46.0528 206.647V212.238C46.0528 212.589 46.2266 212.909 46.529 213.088C103.732 246.898 243.388 241.087 279.016 188.746C279.122 188.591 279.179 188.41 279.185 188.222L279.654 173.294M279.654 173.294C293.92 174.529 298.702 193.059 275.191 208.706M275.191 208.706C271.08 214.42 261.552 219.441 252.058 222.646C250.921 223.03 251.207 225.176 252.407 225.176H260.356C261.115 225.176 261.577 225.98 261.1 226.571C256.81 231.882 245.774 235.139 236.027 237.709C234.874 238.014 235.124 239.606 236.315 239.545L249.294 238.886C250.18 238.841 250.66 239.866 250.014 240.474C244.564 245.599 236.58 249.022 227.301 251.576C226.131 251.898 226.355 253.665 227.566 253.596C238.209 252.988 254.01 251.487 260.845 247.823C272 241.844 278.322 227.011 275.059 214.471M275.191 208.706C275.191 208.706 275.111 212.219 275.059 214.471M275.059 214.471C275.889 211.053 279.001 208.948 282.364 209.529C285.079 209.999 287.238 211.643 287.544 214.471C287.887 217.643 285.408 220.104 282.364 220.647C278.731 221.295 275.163 218.278 275.059 214.471Z" stroke="#000000" stroke-width="5" stroke-linecap="round"></path></svg>',
+  bluecat: '<svg viewBox="0 0 320 320" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M101.642 36.2968C64.2347 32.8015 25.2498 60.5907 20.5038 97.7968C19.5014 105.654 19.9918 115.923 22.3371 127.264L144.223 78.5L156.268 83.4946C154.754 75.0107 152.5 65.9008 147.219 59.2968C134.817 43.7867 121.435 38.1463 101.642 36.2968ZM180.13 93.3898L289.838 138.883C289.924 137.565 289.962 136.364 289.962 135.297C289.962 111.195 286.456 96.2094 268.926 83.2968C249.003 68.6206 219.341 62.7968 198.306 75.7968C190.581 80.5712 184.861 87.366 180.13 93.3898Z" fill="#231E54"></path><path d="M13 131V218.336C13 218.739 13.2409 219.102 13.6114 219.258L164.758 283M13 131L65.0886 155.906M13 131L66.5911 109.559L136.71 81.5057L144.223 78.5M164.758 283L306.41 219.265C306.769 219.104 307 218.747 307 218.353V146M164.758 283L167.763 205M307 146L144.223 78.5M307 146L274.414 159.801C274.119 159.926 273.901 160.185 273.83 160.498L271.196 172M144.223 78.5V121.84M167.763 205L203.958 189.863C204.446 189.659 205.008 189.87 205.241 190.345L216.935 214.16C217.167 214.632 217.726 214.844 218.213 214.644L265.452 195.197C265.752 195.073 265.973 194.812 266.046 194.495L271.196 172M167.763 205L135.347 189.5M65.0886 155.906C65.0886 155.906 64.2902 136.413 72.6014 136C77.5934 135.752 79.1893 140.689 84.121 141.5C92.859 142.938 95.1397 128 102.152 131C104.248 131.897 103.517 135.417 105.157 137C111.399 143.029 115.174 121.5 123.187 123C126.92 123.699 125.945 128.924 129.698 129.5C135.275 130.357 139.383 122.776 144.223 121.84M65.0886 155.906L85.6235 165.725M271.196 172C271.196 172 263.927 168 252.908 171C247.11 172.579 252.081 152.596 243.392 151.5C238.612 150.897 236.514 157.193 231.872 155.906C226.172 154.326 228.867 145.5 224.86 142.5C219.36 138.382 207.237 152.443 200.319 146C196.6 142.537 200.359 135.77 195.811 133.5C190.802 131 174.775 143.5 169.767 136C167.597 132.751 171.188 129.095 168.264 126.5C163.756 122.5 158.247 133.5 151.736 131C147.868 129.515 150.659 123.308 146.727 122C145.865 121.713 145.034 121.683 144.223 121.84M106.158 155.906C106.158 155.906 111.425 143.082 116.676 145.5C119.341 146.727 121.184 151.5 121.184 151.5M134.206 163C134.206 163 138.052 155.551 142.22 155.906C146.965 156.31 139.716 166.188 145.225 164.594C150.734 163 155.242 154 160.751 158.5M155.242 177C155.242 177 165.127 172.888 167.763 177C169.45 179.631 167.763 185 167.763 185M184.291 170C184.291 170 192.342 159.044 195.811 163C198.13 165.645 195.811 172 195.811 172M217.848 173.5C222.49 168.96 226.864 174 230.871 168.5M226.864 195C226.864 195 225.338 186.856 228.867 185C232.505 183.086 234.735 191.394 238.383 189.5C241.512 187.876 238.167 182.431 241.388 181C244.746 179.509 249.903 185 249.903 185" stroke="#000000" stroke-width="5" stroke-linecap="round"></path></svg>'
+};
+var CAT_KEYS = ['cat1','fox','redcat','cat2','snake','bluecat'];
+
+var currentTheme = localStorage.getItem('okanesho_theme') || 'jp';
+
+function applyTheme(theme) {
+  currentTheme = theme;
+  localStorage.setItem('okanesho_theme', theme);
+  document.body.classList.toggle('theme-cat', theme === 'cat');
+  var cb = document.getElementById('theme-toggle-input');
+  if (cb) cb.checked = (theme === 'cat');
+  renderBankPills();
+  if (theme === 'cat') fillCatPillSvgs();
+}
+
+function toggleTheme(cb) {
+  applyTheme(cb.checked ? 'cat' : 'jp');
+}
+
+function getCatSvg(catKey) {
+  return CAT_SVGS[catKey] || CAT_SVGS['cat1'];
+}
+
+
+function renderBankPills(selectedName) {
+  var cards = data.cards || [];
+  if (!selectedName) selectedName = cards.length > 0 ? cards[0].name : '';
+  selectedBank = selectedName;
+  ['add-bank-pills', 'edit-bank-pills'].forEach(function(pid) {
+    var container = document.getElementById(pid);
+    if (!container) return;
+    var html = '';
+    cards.forEach(function(c) {
+      var isActive = c.name === selectedName;
+      var isCat = currentTheme === 'cat';
+      var iconHtml = isCat && c.catKey
+        ? '<span style="display:block;width:36px;height:36px;margin-bottom:2px">' + getCatSvg(c.catKey) + '</span>'
+        : '<span style="display:block;font-size:16px;margin-bottom:2px">' + c.emoji + '</span>';
+      html += '<button class="bank-pill" data-bank="' + c.name + '" data-pid="' + pid + '" style="border-color:' + c.textColor + ';background:' + c.color + ';color:' + c.textColor + ';opacity:' + (isActive?'1':'0.5') + ';border-width:' + (isActive?'2':'1.5') + 'px;flex-direction:column;display:flex;align-items:center;justify-content:center" onclick="selectPill(this)">' + iconHtml + '<span>' + c.name + '</span></button>';
+    });
+    container.innerHTML = html;
+  });
+  if (cards.length > 0 && !selectedName) selectedBank = cards[0].name;
+}
+
+function selectPill(btn) {
+  var pid = btn.getAttribute('data-pid');
+  var container = document.getElementById(pid);
+  if (!container) return;
+  container.querySelectorAll('.bank-pill').forEach(function(b){
+    b.style.opacity = '0.5'; b.style.borderWidth = '1.5px';
+  });
+  btn.style.opacity = '1'; btn.style.borderWidth = '2px';
+  if (pid === 'add-bank-pills') selectedBank = btn.dataset.bank;
+  else editBank = btn.dataset.bank;
+}
+
+var selectedCardEmoji = '🌸';
+var selectedCatKey = 'cat1';
+
+function selectCatPreset(btn) {
+  document.querySelectorAll('#card-cat-pills .card-preset-btn').forEach(function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+  selectedCatKey = btn.getAttribute('data-catkey');
+  selectedCardEmoji = btn.getAttribute('data-emoji');
+  selectedCardColor = btn.getAttribute('data-color');
+  selectedCardTextColor = btn.getAttribute('data-tc');
+}
+
+function scaleSvg(svg) {
+  // Insert width/height="100%" right after <svg
+  return svg.replace('<svg ', '<svg width="100%" height="100%" ');
+}
+
+function fillCatPillSvgs() {
+  var keys = ['cat1','fox','redcat','cat2','snake','bluecat'];
+  keys.forEach(function(k) {
+    var el = document.getElementById('cat-pill-' + k);
+    if (el) { el.innerHTML = scaleSvg(getCatSvg(k)); }
+  });
+}
+var selectedCardColor = 'var(--sakura-l)';
+var selectedCardTextColor = 'var(--taishin)';
+
+function selectCardPreset(btn) {
+  document.querySelectorAll('.card-preset-btn').forEach(function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+  selectedCardEmoji = btn.getAttribute('data-emoji');
+  selectedCardColor = btn.getAttribute('data-color');
+  selectedCardTextColor = btn.getAttribute('data-tc');
+}
+
+function addCard() {
+  var name = document.getElementById('new-card-name').value.trim();
+  if (!name) { showToast('⚠️ 請輸入卡片名稱'); return; }
+  var catKeyIdx = data.cards.length % CAT_KEYS.length;
+  var newCatKey = (currentTheme === 'cat' && selectedCatKey) ? selectedCatKey : CAT_KEYS[catKeyIdx];
+  data.cards.push({ id: Date.now(), name: name, emoji: selectedCardEmoji, color: selectedCardColor, textColor: selectedCardTextColor, catKey: newCatKey });
+  save();
+  document.getElementById('new-card-name').value = '';
+  renderSettings();
+  renderBankPills();
+  showToast('💳 已新增：' + name);
+}
+
+function removeCard(el) {
+  var cid = parseInt(el.getAttribute('data-cid'));
+  data.cards = (data.cards||[]).filter(function(c){ return c.id != cid; });
+  save(); renderSettings(); renderBankPills();
+}
+
+
+function switchTab(tab) {
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
+  document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
+  document.getElementById('page-'+tab).classList.add('active');
+  document.getElementById('tab-'+tab).classList.add('active');
+  if (tab==='overview') renderOverview();
+  if (tab==='settings') renderSettings();
+  if (tab==='chart') { setTimeout(function(){ renderChart(); }, 60); }
+}
+
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(function(){t.classList.remove('show');}, 2000);
+}
+
+// ── PROXY HANDLERS ───────────────────────────────────
+function openEditById(el) { openEdit(el.getAttribute('data-txid')); }
+function deleteById(el) { deleteTransaction(el.getAttribute('data-txid')); }
+function deleteCashById(el) { deleteCash(el.getAttribute('data-txid')); }
+
+document.getElementById('edit-modal').addEventListener('click', function(e){
+  if (e.target===this) closeEditModal();
+});
+document.getElementById('extra-alloc-modal').addEventListener('click', function(e){
+  if (e.target===this) closeExtraAlloc();
+});
+
+
+// ══ FIREBASE ════════════════════════════════════════════
+var firebaseConfig = {
+  apiKey: "AIzaSyCPVQMA66-_d6aVS0oRDgpkzYVr1mDLt7U",
+  authDomain: "okanesho.firebaseapp.com",
+  projectId: "okanesho",
+  storageBucket: "okanesho.firebasestorage.app",
+  messagingSenderId: "555447074665",
+  appId: "1:555447074665:web:5ded1f45c1bb41295407f8"
+};
+
+firebase.initializeApp(firebaseConfig);
+var db = firebase.firestore();
+var auth = firebase.auth();
+var currentUser = null;
+var syncTimeout = null;
+
+auth.onAuthStateChanged(function(user) {
+  var bar = document.getElementById('auth-bar');
+  if (!bar) return;
+  if (user) {
+    currentUser = user;
+    bar.innerHTML = '<span style="font-size:12px;color:var(--text2)">☁️ ' + user.displayName + '</span>'
+      + '<button onclick="signOut()" style="font-size:11px;padding:4px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);cursor:pointer;font-family:inherit;color:var(--text2)">登出</button>';
+    loadFromFirebase();
+  } else {
+    currentUser = null;
+    bar.innerHTML = '<button onclick="signIn()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text2)"><span>☁️</span>Google 登入同步</button>';
+  }
+});
+
+function signIn() {
+  var provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithRedirect(provider);
+}
+function signOut() {
+  auth.signOut();
+  showToast('已登出');
+}
+
+function saveToFirebase() {
+  if (!currentUser) return;
+  clearTimeout(syncTimeout);
+  syncTimeout = setTimeout(function() {
+    db.collection('users').doc(currentUser.uid).set({
+      data: JSON.stringify(data),
+      theme: currentTheme,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(function() {
+      showSyncStatus('☁️ 已同步');
+    }).catch(function() {
+      showSyncStatus('⚠️ 同步失敗');
+    });
+  }, 1500);
+}
+
+function loadFromFirebase() {
+  if (!currentUser) return;
+  showSyncStatus('☁️ 同步中...');
+  db.collection('users').doc(currentUser.uid).get().then(function(doc) {
+    if (doc.exists && doc.data().data) {
+      try {
+        var cloudData = JSON.parse(doc.data().data);
+        data = cloudData;
+        if (!data.cashTransactions) data.cashTransactions = [];
+        if (!data.extraIncomes) data.extraIncomes = [];
+        if (!data.monthlyOverrides) data.monthlyOverrides = {};
+        if (!data.cards || data.cards.length === 0) data.cards = [
+          { id: 1, name: '台新', emoji: '🌸', color: 'var(--sakura-l)', textColor: 'var(--taishin)', catKey: 'cat1' },
+          { id: 2, name: '星展', emoji: '🌊', color: 'var(--sora-l)', textColor: 'var(--stanChart)', catKey: 'fox' },
+          { id: 3, name: '聯邦', emoji: '🍃', color: 'var(--matcha-l)', textColor: 'var(--lianBang)', catKey: 'redcat' }
+        ];
+        // 同步 catKey 給舊資料（沒有 catKey 的卡片）
+        data.cards.forEach(function(c, i) {
+          if (!c.catKey) c.catKey = CAT_KEYS[i % CAT_KEYS.length];
+        });
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        // 載入雲端主題設定
+        if (doc.data().theme) applyTheme(doc.data().theme);
+        renderAll();
+        renderBankPills();
+        showSyncStatus('☁️ 已載入雲端資料');
+      } catch(e) {
+        showSyncStatus('⚠️ 雲端資料格式錯誤');
+      }
+    } else {
+      saveToFirebase();
+      showSyncStatus('☁️ 已上傳本機資料');
+    }
+  }).catch(function() {
+    showSyncStatus('⚠️ 載入失敗，使用本機資料');
+  });
+}
+
+function showSyncStatus(msg) {
+  var el = document.getElementById('sync-status');
+  if (el) { el.textContent = msg; setTimeout(function(){ el.textContent = ''; }, 3000); }
+}
+
+// 覆蓋 save()，自動同步到 Firebase
+var _origSave = save;
+save = function() {
+  _origSave();
+  saveToFirebase();
+};
+
+// applyTheme 也要同步主題到雲端
+var _origApplyTheme = applyTheme;
+applyTheme = function(theme) {
+  _origApplyTheme(theme);
+  saveToFirebase();
+};
+
+// Service Worker（PWA 離線）
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(function(){});
+}
+
+</script>
+</body>
+</html>
