@@ -464,12 +464,8 @@ body.theme-cat .empty-icon { font-size: 0; }
 body.theme-cat .page-header h1 .emoji { font-size: 0; }
 body.theme-cat #theme-toggle-label-jp { display: none; }
 body.theme-cat #theme-toggle-label-cat { display: inline; }
-body.theme-cat #card-preset-pills,
-body.theme-coral #card-preset-pills,
-body.theme-mint #card-preset-pills { display: none !important; }
-body.theme-cat #card-cat-pills,
-body.theme-coral #card-cat-pills,
-body.theme-mint #card-cat-pills { display: flex !important; }
+body.theme-cat #card-preset-pills { display: none !important; }
+body.theme-cat #card-cat-pills { display: flex !important; }
 
 
 /* ══ 貓咪主題 ══ */
@@ -532,7 +528,7 @@ body.theme-mint .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
 <body>
 
 <div class="toast" id="toast"></div>
-<div id="auth-bar" style="position:fixed;top:0;left:0;right:0;z-index:200;display:flex;justify-content:flex-end;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border-bottom:1px solid var(--border)"><button onclick="showLoginModal()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text2)"><span>☁️</span>信箱登入同步</button></div>
+<div id="auth-bar" style="position:fixed;top:0;left:0;right:0;z-index:200;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:0.4px;color:var(--text3);flex:0 0 auto">v3.1 資料防護</span><div id="auth-bar-inner" style="display:flex;align-items:center;gap:8px"><button onclick="showLoginModal()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text2)"><span>☁️</span>信箱登入同步</button></div></div>
 <div id="sync-status" style="position:fixed;top:34px;right:12px;z-index:199;font-size:11px;color:var(--text3);font-weight:600"></div>
 
 <!-- ══ PAGE: 記帳 ══ -->
@@ -777,6 +773,10 @@ body.theme-mint .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
       <button class="data-btn" onclick="document.getElementById('import-file').click()">📥 匯入備份</button>
       <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
     </div>
+    <div style="padding:0 14px 14px">
+      <button class="data-btn" style="width:100%" onclick="undoImport()">⏪ 復原匯入前</button>
+      <div style="font-size:11px;color:var(--text3);margin-top:8px;line-height:1.5">匯入備份前會自動保留一份匯入前的資料，選錯檔案時按上面這顆就能還原。</div>
+    </div>
   </div>
   <div style="height:12px"></div>
 </div>
@@ -985,41 +985,46 @@ var data = {
 };
 
 function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+// 統一的資料正規化：load / 雲端載入 / 匯入 / 復原 四條路徑共用同一份，
+// 避免同樣的補預設值邏輯散在多處只改到其中一處（單檔 app 的經典漏改）
+function normalizeData() {
+  if (!Array.isArray(data.transactions)) data.transactions = [];
+  if (!Array.isArray(data.cashTransactions)) data.cashTransactions = [];
+  if (!Array.isArray(data.extraIncomes)) data.extraIncomes = [];
+  if (!Array.isArray(data.fixedExpenses)) data.fixedExpenses = [];
+  if (!Array.isArray(data.budgetAllocs)) data.budgetAllocs = [];
+  if (!data.monthlyOverrides || typeof data.monthlyOverrides !== 'object') data.monthlyOverrides = {};
+  if (!Array.isArray(data.cards) || data.cards.length === 0) data.cards = [
+    { id: 1, name: '台新', emoji: '🌸', color: 'var(--sakura-l)', textColor: 'var(--taishin)', catKey: 'cat1' },
+    { id: 2, name: '星展', emoji: '🌊', color: 'var(--sora-l)', textColor: 'var(--stanChart)', catKey: 'fox' },
+    { id: 3, name: '聯邦', emoji: '🍃', color: 'var(--matcha-l)', textColor: 'var(--lianBang)', catKey: 'redcat' }
+  ];
+  data.cards.forEach(function(c, i){ if (!c.catKey) c.catKey = CAT_KEYS[i % CAT_KEYS.length]; });
+  data.fixedExpenses.forEach(function(e){
+    if (e.included === undefined) e.included = true;
+    if (e.note === undefined) e.note = '';
+  });
+  data.budgetAllocs.forEach(function(a){
+    if (!a.allocType) {
+      if (a.isIncome) a.allocType = 'income';
+      else if (a.isSaving) a.allocType = 'saving';
+      else a.allocType = 'other';
+    }
+  });
+}
+
 function load() {
   var raw = localStorage.getItem(STORAGE_KEY);
   if (!raw) raw = localStorage.getItem('finance_v2');
   if (!raw) raw = localStorage.getItem('finance_v1');
   if (raw) {
-    try {
-      var d = JSON.parse(raw);
-      if (!d.cashTransactions) d.cashTransactions = [];
-      if (!d.extraIncomes) d.extraIncomes = [];
-      if (!d.monthlyOverrides) d.monthlyOverrides = {};
-      if (!d.cards || d.cards.length === 0) d.cards = [
-        { id: 1, name: '台新', emoji: '🌸', color: 'var(--sakura-l)', textColor: 'var(--taishin)', catKey: 'cat1' },
-        { id: 2, name: '星展', emoji: '🌊', color: 'var(--sora-l)', textColor: 'var(--stanChart)', catKey: 'fox' },
-        { id: 3, name: '聯邦', emoji: '🍃', color: 'var(--matcha-l)', textColor: 'var(--lianBang)', catKey: 'redcat' }
-      ];
-      if (d.fixedExpenses) d.fixedExpenses.forEach(function(e){
-        if (e.included === undefined) e.included = true;
-        if (e.note === undefined) e.note = '';
-      });
-      if (d.budgetAllocs) d.budgetAllocs.forEach(function(a){
-        if (!a.allocType) {
-          if (a.isIncome) a.allocType = 'income';
-          else if (a.isSaving) a.allocType = 'saving';
-          else a.allocType = 'other';
-        }
-      });
-      data = d;
-    } catch(err) {}
+    try { data = JSON.parse(raw); } catch(err) {}
   }
+  normalizeData();
 }
 
 // ── PERIOD KEY ──────────────────────────────────────
 function periodKey(p) { return p.year + '-' + p.month; }
-// 月限定項目：只在建立它的那個月顯示與計算
-function allocInPeriodKey(a, key) { return !a.monthKey || a.monthKey === key; }
 
 // Get alloc amount for a specific period (override or default)
 function getAllocAmount(allocId, p) {
@@ -1075,6 +1080,27 @@ function periodEnd(p) {
   if (endM > 12) { endM = 1; endY += 1; }
   return new Date(endY, endM - 1, 24, 23, 59, 59);
 }
+// 這筆日期屬於哪一期（25 日起算）
+function periodOfDate(ds) {
+  var d = new Date(ds + 'T00:00:00');
+  var y = d.getFullYear(), m = d.getMonth() + 1;
+  if (d.getDate() < 25) { m -= 1; if (m === 0) { m = 12; y -= 1; } }
+  return { year: y, month: m };
+}
+// 檢視某一期時，日期欄的合理預設：今天若落在該期就用今天，否則夾到期間邊界
+function defaultDateFor(p) {
+  var today = new Date();
+  var s = periodStart(p), e = periodEnd(p);
+  var d = today < s ? s : (today > e ? e : today);
+  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+}
+function syncDateInputs() {
+  var ds = defaultDateFor(getCurrentPeriod());
+  var a = document.getElementById('input-date');
+  var b = document.getElementById('cash-date');
+  if (a) a.value = ds;
+  if (b) b.value = ds;
+}
 function inPeriod(tx, p) {
   var d = new Date(tx.date + 'T00:00:00');
   return d >= periodStart(p) && d <= periodEnd(p);
@@ -1105,17 +1131,15 @@ function getPeriodSummary(p) {
   var extras = (data.extraIncomes||[]).filter(function(e){ return inPeriod(e, p); });
 
   // Salary income (period-specific)
-  var pk = periodKey(p);
   var salary = 0;
   data.budgetAllocs.forEach(function(a){
-    if (!allocInPeriodKey(a, pk)) return;
     if (a.isIncome || a.allocType === 'income') salary += getAllocAmount(a.id, p);
   });
   var extraTotal = extras.reduce(function(s,e){ return s+e.amount; }, 0);
   var income = salary + extraTotal;
 
   // Savings (period-specific)
-  var allocSavings = data.budgetAllocs.filter(function(a){ return a.allocType === 'saving' && allocInPeriodKey(a, pk); })
+  var allocSavings = data.budgetAllocs.filter(function(a){ return a.allocType === 'saving'; })
     .reduce(function(s,a){ return s + getAllocAmount(a.id, p); }, 0);
   var extraSavings = extras.reduce(function(sumE, ei){
     return sumE + (ei.allocations||[]).filter(function(al){ return al.type==='saving'; })
@@ -1124,7 +1148,7 @@ function getPeriodSummary(p) {
   var totalSavings = allocSavings + extraSavings;
 
   // Reserves (period-specific)
-  var totalReserve = data.budgetAllocs.filter(function(a){ return a.allocType === 'reserve' && allocInPeriodKey(a, pk); })
+  var totalReserve = data.budgetAllocs.filter(function(a){ return a.allocType === 'reserve'; })
     .reduce(function(s,a){ return s + getAllocAmount(a.id, p); }, 0);
 
   // Spending
@@ -1137,7 +1161,7 @@ function getPeriodSummary(p) {
 
   // Other allocs (房租 etc)
   var otherAllocs = data.budgetAllocs.filter(function(a){
-    return a.allocType === 'other' && !a.isIncome && allocInPeriodKey(a, pk);
+    return a.allocType === 'other' && !a.isIncome;
   }).reduce(function(s,a){ return s + getAllocAmount(a.id, p); }, 0);
 
   // Remain = income - cc - cash - savings - reserve
@@ -1177,14 +1201,16 @@ function switchSubTab(tab) {
 }
 
 function pad(n) { return n < 10 ? '0' + n : '' + n; }
+// 防撞號 id：同毫秒連續新增也不會產生重複 id（舊的數字 id 仍相容，全檔用 == 比較）
+var _idSeq = 0;
+function mkId() { return Date.now() + '_' + (++_idSeq) + '_' + Math.random().toString(36).slice(2, 6); }
 
 document.addEventListener('DOMContentLoaded', function() {
   load();
   var today = new Date();
   var ds = today.getFullYear() + '-' + pad(today.getMonth()+1) + '-' + pad(today.getDate());
-  document.getElementById('input-date').value = ds;
-  document.getElementById('cash-date').value = ds;
   document.getElementById('new-extra-date').value = ds;
+  syncDateInputs();
 
   function setupPills(selector, onSelect) {
     document.querySelectorAll(selector + ' .bank-pill').forEach(function(btn) {
@@ -1255,12 +1281,19 @@ function addTransaction() {
   if (!name) { showToast('⚠️ 請輸入品項名稱'); return; }
   if (!amount||amount<=0) { showToast('⚠️ 請輸入金額'); return; }
   if (!date) { showToast('⚠️ 請選擇日期'); return; }
-  data.transactions.push({ id: Date.now(), name: name, amount: amount, date: date, bank: selectedBank, settled: false });
+  data.transactions.push({ id: mkId(), name: name, amount: amount, date: date, bank: selectedBank, settled: false });
   save();
   document.getElementById('input-name').value = '';
   document.getElementById('input-amount').value = '';
-  showToast('✅ 已記：' + name + ' $' + amount);
+  showToast(addedToast('✅ 已記：' + name + ' $' + amount, date));
   renderAll();
+}
+// 若這筆日期不屬於目前檢視的期間，明講它去了哪一期（否則會「記了卻看不到」）
+function addedToast(msg, date) {
+  var viewing = getCurrentPeriod();
+  var tp = periodOfDate(date);
+  if (tp.year === viewing.year && tp.month === viewing.month) return msg;
+  return msg + '（已記入 ' + periodShort(tp) + ' 期）';
 }
 function deleteTransaction(id) {
   data.transactions = data.transactions.filter(function(tx){return tx.id!=id;});
@@ -1303,11 +1336,11 @@ function addCash() {
   if (!name) { showToast('⚠️ 請輸入品項名稱'); return; }
   if (!amount||amount<=0) { showToast('⚠️ 請輸入金額'); return; }
   if (!date) { showToast('⚠️ 請選擇日期'); return; }
-  data.cashTransactions.push({ id: Date.now(), name: name, amount: amount, date: date });
+  data.cashTransactions.push({ id: mkId(), name: name, amount: amount, date: date });
   save();
   document.getElementById('cash-name').value = '';
   document.getElementById('cash-amount').value = '';
-  showToast('✅ 已記現金：' + name + ' $' + amount);
+  showToast(addedToast('✅ 已記現金：' + name + ' $' + amount, date));
   renderAll();
 }
 function renderCash() {
@@ -1337,7 +1370,7 @@ function deleteCash(id) {
 }
 
 // ── OVERVIEW ─────────────────────────────────────────
-function changePeriod(delta) { currentPeriodOffset += delta; renderAll(); }
+function changePeriod(delta) { currentPeriodOffset += delta; syncDateInputs(); renderAll(); }
 
 function renderOverview() {
   var p = getCurrentPeriod();
@@ -1388,9 +1421,7 @@ function renderOverview() {
   // Budget allocs by type
   html += '<div class="ov-card" style="margin-top:10px">';
   html += '<div class="ov-card-header"><div class="ov-card-title">💰 薪資分配</div></div>';
-  var ovKey = periodKey(p);
   data.budgetAllocs.forEach(function(a){
-    if (!allocInPeriodKey(a, ovKey)) return;
     var amt = getAllocAmount(a.id, p);
     var icon = a.isIncome||a.allocType==='income' ? '💴' : a.allocType==='saving' ? '🏦' : a.allocType==='reserve' ? '💾' : '💸';
     var cls = (a.isIncome||a.allocType==='income') ? 'val-green' : '';
@@ -1435,11 +1466,8 @@ function renderOverview() {
 function clearMonthOverrides() {
   var p = getSettingsPeriod();
   var key = periodKey(p);
-  var hadMonthOnly = data.budgetAllocs.some(function(a){ return a.monthKey === key; });
-  // 一併移除該月的月限定項目（預設值裡不存在，清空後不應殘留）
-  data.budgetAllocs = data.budgetAllocs.filter(function(a){ return a.monthKey !== key; });
-  if (data.monthlyOverrides[key] || hadMonthOnly) {
-    if (data.monthlyOverrides[key]) delete data.monthlyOverrides[key];
+  if (data.monthlyOverrides[key]) {
+    delete data.monthlyOverrides[key];
     save();
     renderSettings();
     renderOverview();
@@ -1484,7 +1512,7 @@ function renderSettings() {
 
   // ── DEFAULT TAB: income ──
   var hd = '';
-  data.budgetAllocs.filter(function(a){return (a.isIncome||a.allocType==='income') && !a.monthKey;}).forEach(function(a){
+  data.budgetAllocs.filter(function(a){return a.isIncome||a.allocType==='income';}).forEach(function(a){
     hd += '<div class="set-row">';
     hd += '<div class="set-row-top"><div class="set-name">💴 ' + a.name + '</div></div>';
     hd += '<div class="set-row-bottom"><input class="set-input" type="number" inputmode="decimal" value="' + (a.amount||0) + '" data-aid="' + a.id + '" onchange="handleDefaultAllocInput(this)"></div>';
@@ -1495,7 +1523,7 @@ function renderSettings() {
 
   // ── DEFAULT TAB: alloc list ──
   hd = '';
-  data.budgetAllocs.filter(function(a){return !a.isIncome && a.allocType!=='income' && !a.monthKey;}).forEach(function(a){
+  data.budgetAllocs.filter(function(a){return !a.isIncome && a.allocType!=='income';}).forEach(function(a){
     var atype = a.allocType || 'other';
     var icon = atype==='saving'?'🏦':atype==='reserve'?'💾':'💸';
     hd += '<div class="set-row">';
@@ -1521,7 +1549,7 @@ function renderSettings() {
 
   // ── MONTH TAB: income override ──
   var hm = '';
-  data.budgetAllocs.filter(function(a){return (a.isIncome||a.allocType==='income') && allocInPeriodKey(a, key);}).forEach(function(a){
+  data.budgetAllocs.filter(function(a){return a.isIncome||a.allocType==='income';}).forEach(function(a){
     var hasOverride = data.monthlyOverrides[key] && data.monthlyOverrides[key][a.id] !== undefined;
     var val = getAllocAmount(a.id, p);
     hm += '<div class="set-row">';
@@ -1534,21 +1562,16 @@ function renderSettings() {
 
   // ── MONTH TAB: alloc override ──
   hm = '';
-  data.budgetAllocs.filter(function(a){return !a.isIncome && a.allocType!=='income' && allocInPeriodKey(a, key);}).forEach(function(a){
+  data.budgetAllocs.filter(function(a){return !a.isIncome && a.allocType!=='income';}).forEach(function(a){
     var atype = a.allocType || 'other';
     var icon = atype==='saving'?'🏦':atype==='reserve'?'💾':'💸';
     var hasOverride = data.monthlyOverrides[key] && data.monthlyOverrides[key][a.id] !== undefined;
     var val = getAllocAmount(a.id, p);
-    var isMonthOnly = !!a.monthKey;
     hm += '<div class="set-row">';
-    hm += '<div class="set-row-top"><div class="set-name">' + icon + ' ' + a.name + (isMonthOnly?' <span style="font-size:10px;color:var(--text3)">（本月）</span>':(hasOverride?' <span style="font-size:10px;color:var(--kinari)">✏️</span>':'')) + '</div></div>';
+    hm += '<div class="set-row-top"><div class="set-name">' + icon + ' ' + a.name + (hasOverride?' <span style="font-size:10px;color:var(--kinari)">✏️</span>':'') + '</div></div>';
     hm += '<div class="set-row-bottom">';
-    hm += '<input class="set-input" type="number" inputmode="decimal" value="' + val + '" data-aid="' + a.id + '" onchange="handleAllocInput(this)" style="' + (hasOverride && !isMonthOnly?'border-color:var(--kinari)':'') + '">';
-    if (isMonthOnly) {
-      hm += '<button class="icon-btn del" data-aid="' + a.id + '" onclick="removeMonthAllocById(this)">🗑</button>';
-    } else {
-      hm += '<button class="icon-btn" style="background:var(--bg2);font-size:11px" data-aid="' + a.id + '" onclick="resetOneOverride(this)" title="重設為預設值">↩</button>';
-    }
+    hm += '<input class="set-input" type="number" inputmode="decimal" value="' + val + '" data-aid="' + a.id + '" onchange="handleAllocInput(this)" style="' + (hasOverride?'border-color:var(--kinari)':'') + '">';
+    hm += '<button class="icon-btn" style="background:var(--bg2);font-size:11px" data-aid="' + a.id + '" onclick="resetOneOverride(this)" title="重設為預設值">↩</button>';
     hm += '</div></div>';
   });
   var allocEl = document.getElementById('budget-alloc-list');
@@ -1610,11 +1633,10 @@ function renderSettings() {
 function updateDefaultRemainLabel() {
   var income = 0;
   data.budgetAllocs.forEach(function(a) {
-    if (a.monthKey) return;
     if (a.isIncome || a.allocType === 'income') income += (a.amount || 0);
   });
   var totalAlloc = data.budgetAllocs.filter(function(a) {
-    return !a.isIncome && a.allocType !== 'income' && !a.monthKey;
+    return !a.isIncome && a.allocType !== 'income';
   }).reduce(function(s, a) { return s + (a.amount || 0); }, 0);
   var remain = income - totalAlloc;
   var el = document.getElementById('default-remain-label');
@@ -1626,14 +1648,12 @@ function updateDefaultRemainLabel() {
 
 function updateAllocRemainLabel() {
   var p = getSettingsPeriod();
-  var lk = periodKey(p);
   var income = 0;
   data.budgetAllocs.forEach(function(a){
-    if (!allocInPeriodKey(a, lk)) return;
     if (a.isIncome || a.allocType === 'income') income += getAllocAmount(a.id, p);
   });
   var totalAlloc = data.budgetAllocs.filter(function(a){
-    return !a.isIncome && a.allocType !== 'income' && allocInPeriodKey(a, lk);
+    return !a.isIncome && a.allocType !== 'income';
   }).reduce(function(s,a){ return s + getAllocAmount(a.id, p); }, 0);
   var remain = income - totalAlloc;
   var el = document.getElementById('alloc-remain-label');
@@ -1659,7 +1679,6 @@ function snapshotHistoryMonths() {
   Object.keys(months).forEach(function(key){
     if(!data.monthlyOverrides[key]) data.monthlyOverrides[key]={};
     data.budgetAllocs.forEach(function(a){
-      if(a.monthKey) return;
       if(data.monthlyOverrides[key][a.id]===undefined) data.monthlyOverrides[key][a.id]=a.amount;
     });
     (data.fixedExpenses||[]).forEach(function(fe){
@@ -1746,25 +1765,13 @@ function removeFixedById(el) {
 function removeAllocById(el) {
   var aid = parseInt(el.getAttribute('data-aid'));
   data.budgetAllocs = data.budgetAllocs.filter(function(x){return x.id!=aid;});
-  Object.keys(data.monthlyOverrides||{}).forEach(function(k){
-    if (data.monthlyOverrides[k] && data.monthlyOverrides[k][aid] !== undefined) delete data.monthlyOverrides[k][aid];
-  });
   save(); renderSettings(); renderOverview();
-}
-function removeMonthAllocById(el) {
-  var aid = parseInt(el.getAttribute('data-aid'));
-  data.budgetAllocs = data.budgetAllocs.filter(function(x){return x.id!=aid;});
-  Object.keys(data.monthlyOverrides||{}).forEach(function(k){
-    if (data.monthlyOverrides[k] && data.monthlyOverrides[k][aid] !== undefined) delete data.monthlyOverrides[k][aid];
-  });
-  save(); renderSettings(); renderOverview();
-  showToast('🗑 已刪除本月項目');
 }
 function addFixedExpense() {
   var name = document.getElementById('new-expense-name').value.trim();
   var amount = parseFloat(document.getElementById('new-expense-amount').value)||0;
   if (!name) { showToast('⚠️ 請輸入項目名稱'); return; }
-  data.fixedExpenses.push({ id: Date.now(), name: name, amount: amount, included: true, note: '' });
+  data.fixedExpenses.push({ id: mkId(), name: name, amount: amount, included: true, note: '' });
   save();
   document.getElementById('new-expense-name').value = '';
   document.getElementById('new-expense-amount').value = '';
@@ -1778,9 +1785,9 @@ function addMonthAlloc() {
   if (!name) { showToast('⚠️ 請輸入項目名稱'); return; }
   var p = getSettingsPeriod();
   var key = periodKey(p);
-  // 建立新的 budgetAlloc（標記 monthKey → 僅屬於該月，不影響預設值與其他月份）
-  var newId = Date.now();
-  data.budgetAllocs.push({ id: newId, name: name, amount: 0, allocType: type, monthKey: key });
+  // 建立新的 budgetAlloc
+  var newId = mkId();
+  data.budgetAllocs.push({ id: newId, name: name, amount: 0, allocType: type });
   // 立刻在當月設定 override
   if (!data.monthlyOverrides[key]) data.monthlyOverrides[key] = {};
   data.monthlyOverrides[key][newId] = amount;
@@ -1796,7 +1803,7 @@ function addBudgetAlloc() {
   var amount = parseFloat(document.getElementById('new-alloc-amount').value)||0;
   if (!name) { showToast('⚠️ 請輸入項目名稱'); return; }
   var p = getSettingsPeriod();
-  var newId = Date.now();
+  var newId = mkId();
   data.budgetAllocs.push({ id: newId, name: name, amount: amount, allocType: 'other' });
   setAllocOverride(newId, p, amount);
   save();
@@ -1811,7 +1818,7 @@ function addExtraIncome() {
   if (!name) { showToast('⚠️ 請輸入名稱'); return; }
   if (!amount||amount<=0) { showToast('⚠️ 請輸入金額'); return; }
   if (!date) { showToast('⚠️ 請選擇日期'); return; }
-  var ei = { id: Date.now(), name: name, amount: amount, date: date, allocations: [] };
+  var ei = { id: mkId(), name: name, amount: amount, date: date, allocations: [] };
   data.extraIncomes.push(ei);
   save();
   document.getElementById('new-extra-name').value = '';
@@ -1996,14 +2003,55 @@ function exportData() {
   a.href=url; a.download='okanesho-backup-'+today.getFullYear()+pad(today.getMonth()+1)+pad(today.getDate())+'.json';
   a.click(); URL.revokeObjectURL(url); showToast('📤 備份已下載');
 }
+var PREIMPORT_KEY = STORAGE_KEY + '_preimport';
+
+// 匯入前把現況存兩份快照：本機（離線也有效）＋ 雲端子集合（登入時）
+function snapshotBeforeImport() {
+  try {
+    localStorage.setItem(PREIMPORT_KEY, JSON.stringify({ at: new Date().toISOString(), data: data }));
+  } catch(x) { /* 空間不足也不擋匯入，雲端那份還在 */ }
+  if (typeof currentUser !== 'undefined' && currentUser) {
+    db.collection('users').doc(currentUser.uid).collection('snapshots')
+      .doc('preimport_' + Date.now())
+      .set({ at: new Date().toISOString(), reason: 'import', data: JSON.stringify(data) })
+      .catch(function(err){ showSyncStatus('⚠️ 雲端快照失敗：' + (err.code || err.message)); });
+  }
+}
+
 function importData(e) {
   var file = e.target.files[0]; if (!file) return;
   var reader = new FileReader();
   reader.onload = function(ev) {
-    try { data=JSON.parse(ev.target.result); save(); renderAll(); showToast('📥 備份已匯入'); }
-    catch(err) { showToast('⚠️ 檔案格式錯誤'); }
+    var incoming;
+    try { incoming = JSON.parse(ev.target.result); }
+    catch(err) { showToast('⚠️ 這不是有效的 JSON 檔，未做任何變更'); return; }
+    // 防呆：必須長得像おかね帳的備份，否則一律拒絕
+    if (!incoming || typeof incoming !== 'object' || !Array.isArray(incoming.transactions)) {
+      showToast('⚠️ 這不是おかね帳的備份檔，未做任何變更'); return;
+    }
+    var cnt = incoming.transactions.length +
+              (Array.isArray(incoming.cashTransactions) ? incoming.cashTransactions.length : 0);
+    snapshotBeforeImport();
+    data = incoming;
+    normalizeData();
+    save(); renderBankPills(); renderAll();
+    showToast('📥 已匯入 ' + cnt + ' 筆　舊資料已備份，可按「復原匯入前」還原');
   };
   reader.readAsText(file); e.target.value='';
+}
+
+function undoImport() {
+  var raw = localStorage.getItem(PREIMPORT_KEY);
+  if (!raw) { showToast('⚠️ 沒有可復原的匯入前資料'); return; }
+  var snap;
+  try { snap = JSON.parse(raw); } catch(x) { showToast('⚠️ 快照損毀，無法復原'); return; }
+  if (!snap || !snap.data || !Array.isArray(snap.data.transactions)) {
+    showToast('⚠️ 快照損毀，無法復原'); return;
+  }
+  data = snap.data;
+  normalizeData();
+  save(); renderBankPills(); renderAll();
+  showToast('⏪ 已復原到匯入前（' + String(snap.at).slice(0, 16).replace('T', ' ') + '）');
 }
 
 // ── NAV ──────────────────────────────────────────────
@@ -2100,7 +2148,7 @@ function addCard() {
   if (!name) { showToast('⚠️ 請輸入卡片名稱'); return; }
   var catKeyIdx = data.cards.length % CAT_KEYS.length;
   var newCatKey = (currentTheme === 'cat' && selectedCatKey) ? selectedCatKey : CAT_KEYS[catKeyIdx];
-  data.cards.push({ id: Date.now(), name: name, emoji: selectedCardEmoji, color: selectedCardColor, textColor: selectedCardTextColor, catKey: newCatKey });
+  data.cards.push({ id: mkId(), name: name, emoji: selectedCardEmoji, color: selectedCardColor, textColor: selectedCardTextColor, catKey: newCatKey });
   save();
   document.getElementById('new-card-name').value = '';
   renderSettings();
@@ -2160,7 +2208,7 @@ var currentUser = null;
 var syncTimeout = null;
 
 function updateAuthBar(user) {
-  var bar = document.getElementById('auth-bar');
+  var bar = document.getElementById('auth-bar-inner');
   if (!bar) { setTimeout(function(){ updateAuthBar(user); }, 100); return; }
   if (user) {
     currentUser = user;
@@ -2213,18 +2261,33 @@ function doLogin() {
 }
 function signOut() { auth.signOut(); showToast('已登出'); }
 
+function pushToFirebase() {
+  if (!currentUser) return;
+  db.collection('users').doc(currentUser.uid).set({
+    data: JSON.stringify(data),
+    theme: currentTheme,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }).then(function() { showSyncStatus('☁️ 已同步'); })
+    .catch(function(err) { showSyncStatus('⚠️ 同步失敗：' + (err.code || err.message)); });
+}
+
 function saveToFirebase() {
   if (!currentUser) return;
   clearTimeout(syncTimeout);
-  syncTimeout = setTimeout(function() {
-    db.collection('users').doc(currentUser.uid).set({
-      data: JSON.stringify(data),
-      theme: currentTheme,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    }).then(function() { showSyncStatus('☁️ 已同步'); })
-      .catch(function() { showSyncStatus('⚠️ 同步失敗'); });
-  }, 1500);
+  syncTimeout = setTimeout(function() { syncTimeout = null; pushToFirebase(); }, 1500);
 }
+
+// iOS 會毫不留情地凍結背景中的 PWA：1.5 秒 debounce 還沒開火就被殺掉的話，
+// 那次寫入永遠不會送出。切背景／關閉的當下立刻把待送的推上去。
+function flushSync() {
+  if (!currentUser || !syncTimeout) return;
+  clearTimeout(syncTimeout); syncTimeout = null;
+  pushToFirebase();
+}
+document.addEventListener('visibilitychange', function(){
+  if (document.visibilityState === 'hidden') flushSync();
+});
+window.addEventListener('pagehide', flushSync);
 
 function loadFromFirebase() {
   if (!currentUser) return;
@@ -2232,17 +2295,8 @@ function loadFromFirebase() {
   db.collection('users').doc(currentUser.uid).get().then(function(doc) {
     if (doc.exists && doc.data().data) {
       try {
-        var cloudData = JSON.parse(doc.data().data);
-        data = cloudData;
-        if (!data.cashTransactions) data.cashTransactions = [];
-        if (!data.extraIncomes) data.extraIncomes = [];
-        if (!data.monthlyOverrides) data.monthlyOverrides = {};
-        if (!data.cards || data.cards.length === 0) data.cards = [
-          {id:1,name:'台新',emoji:'🌸',color:'var(--sakura-l)',textColor:'var(--taishin)',catKey:'cat1'},
-          {id:2,name:'星展',emoji:'🌊',color:'var(--sora-l)',textColor:'var(--stanChart)',catKey:'fox'},
-          {id:3,name:'聯邦',emoji:'🍃',color:'var(--matcha-l)',textColor:'var(--lianBang)',catKey:'redcat'}
-        ];
-        data.cards.forEach(function(c,i){ if(!c.catKey) c.catKey=CAT_KEYS[i%CAT_KEYS.length]; });
+        data = JSON.parse(doc.data().data);
+        normalizeData();
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         if (doc.data().theme) applyTheme(doc.data().theme);
         renderAll();
@@ -2253,7 +2307,7 @@ function loadFromFirebase() {
       saveToFirebase();
       showSyncStatus('☁️ 已上傳本機資料');
     }
-  }).catch(function() { showSyncStatus('⚠️ 載入失敗，使用本機資料'); });
+  }).catch(function(err) { showSyncStatus('⚠️ 載入失敗（' + (err.code || err.message) + '），使用本機資料'); });
 }
 
 function showSyncStatus(msg) {
