@@ -457,15 +457,13 @@ body.theme-cat .washi {
 }
 body.theme-cat .tab-btn.active { color: #D4782A; }
 body.theme-cat{--hero-c1:#C8651A;--hero-c2:#E08838;--hero-c3:#F0AA5E;--hero-emoji:'🐱'}
-body.theme-cat .tab-icon-jp { display: none !important; }
-body.theme-cat .tab-icon-cat { display: inline-flex !important; align-items: center; justify-content: center; width: 28px; height: 28px; }
-body.theme-cat .tab-btn .tab-icon-cat svg { width: 100%; height: 100%; display: block; }
 body.theme-cat .empty-icon { font-size: 0; }
 body.theme-cat .page-header h1 .emoji { font-size: 0; }
 body.theme-cat #theme-toggle-label-jp { display: none; }
 body.theme-cat #theme-toggle-label-cat { display: inline; }
-body.theme-cat #card-preset-pills { display: none !important; }
-body.theme-cat #card-cat-pills { display: flex !important; }
+/* ↓ 貓咪圖示家族共用（見 JS 的 CAT_ICON_THEMES），不要再寫成 body.theme-cat */
+body.cat-icons #card-preset-pills { display: none !important; }
+body.cat-icons #card-cat-pills { display: flex !important; }
 
 
 /* ══ 貓咪主題 ══ */
@@ -513,22 +511,16 @@ body.theme-mint .washi{background:repeating-linear-gradient(90deg,#A0D8D0 0 10px
 body.theme-mint .tab-btn.active{color:#1A8A7A}
 body.theme-mint{--hero-c1:#0F6A5A;--hero-c2:#2A9A88;--hero-c3:#5ABFA8;--hero-emoji:'🌊'}
 
-/* 非日式主題共用 tab icon 切換 */
-body.theme-cat .tab-icon-jp,
-body.theme-coral .tab-icon-jp,
-body.theme-mint .tab-icon-jp{display:none !important}
-body.theme-cat .tab-icon-cat,
-body.theme-coral .tab-icon-cat,
-body.theme-mint .tab-icon-cat{display:inline-flex !important;align-items:center;justify-content:center;width:28px;height:28px}
-body.theme-cat .tab-btn .tab-icon-cat svg,
-body.theme-coral .tab-btn .tab-icon-cat svg,
-body.theme-mint .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
+/* 貓咪圖示家族共用 tab icon 切換 */
+body.cat-icons .tab-icon-jp{display:none !important}
+body.cat-icons .tab-icon-cat{display:inline-flex !important;align-items:center;justify-content:center;width:28px;height:28px}
+body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
 </style>
 </head>
 <body>
 
 <div class="toast" id="toast"></div>
-<div id="auth-bar" style="position:fixed;top:0;left:0;right:0;z-index:200;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:0.4px;color:var(--text3);flex:0 0 auto">v3.3 週期設定</span><div id="auth-bar-inner" style="display:flex;align-items:center;gap:8px"><button onclick="showLoginModal()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text2)"><span>☁️</span>信箱登入同步</button></div></div>
+<div id="auth-bar" style="position:fixed;top:0;left:0;right:0;z-index:200;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:0.4px;color:var(--text3);flex:0 0 auto">v3.4 主題修正</span><div id="auth-bar-inner" style="display:flex;align-items:center;gap:8px"><button onclick="showLoginModal()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text2)"><span>☁️</span>信箱登入同步</button></div></div>
 <div id="sync-status" style="position:fixed;top:34px;right:12px;z-index:199;font-size:11px;color:var(--text3);font-weight:600"></div>
 
 <!-- ══ PAGE: 記帳 ══ -->
@@ -936,11 +928,19 @@ body.theme-mint .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
 
 var currentTheme = localStorage.getItem('okanesho_theme') || 'jp';
 
+// ── 貓咪圖示家族：唯一的真實來源 ────────────────────
+// 以後要讓新主題也用貓咪圖示，只加這個陣列一行，CSS 和其餘 JS 都不用動。
+var CAT_ICON_THEMES = ['cat', 'coral', 'mint'];
+function usesCatIcons() { return CAT_ICON_THEMES.indexOf(currentTheme) !== -1; }
+
 function applyTheme(theme) {
   currentTheme = theme;
   localStorage.setItem('okanesho_theme', theme);
   document.body.classList.remove('theme-cat','theme-coral','theme-mint');
   if (theme !== 'jp') document.body.classList.add('theme-' + theme);
+  // 所有貓咪圖示相關的 CSS 都只認這一個 class
+  if (usesCatIcons()) document.body.classList.add('cat-icons');
+  else document.body.classList.remove('cat-icons');
   ['jp','cat','coral','mint'].forEach(function(t) {
     var btn = document.getElementById('theme-btn-' + t);
     if (!btn) return;
@@ -954,7 +954,7 @@ function applyTheme(theme) {
       btn.style.borderColor = 'var(--border)';
     }
   });
-  var isCat = (theme === 'cat' || theme === 'coral' || theme === 'mint');
+  var isCat = usesCatIcons();
   renderBankPills();
   if (isCat) fillCatPillSvgs();
   var extraSection = document.getElementById('extra-income-section');
@@ -1305,7 +1305,7 @@ function renderRecord() {
       if (!allSettled) html += '<button class="settle-btn" data-wn="' + wn + '" onclick="settleWeekById(this)">🏦 匯款到兆豐　NT$ ' + pendingTotal.toLocaleString() + '</button>';
       group.forEach(function(tx){
         html += '<div class="tx-item' + (tx.settled ? ' settled' : '') + '">';
-        var isCatTheme = (currentTheme==='cat'||currentTheme==='coral'||currentTheme==='mint');
+        var isCatTheme = usesCatIcons();
         var txCard = getCard(tx.bank);
         var badgeInner = (isCatTheme && txCard.catKey)
           ? '<span style=\'display:block;width:24px;height:24px;line-height:0\'>' + scaleSvg(getCatSvg(txCard.catKey)) + '</span>'
@@ -1502,7 +1502,7 @@ function renderOverview() {
   (data.cards||[]).map(function(c){return c.name;}).forEach(function(b){
     var bt = data.transactions.filter(function(t){return inPeriod(t,p)&&t.bank===b;}).reduce(function(sum,t){return sum+t.amount;},0);
     if (bt) {
-      var isCatT = (currentTheme==='cat'||currentTheme==='coral'||currentTheme==='mint');
+      var isCatT = usesCatIcons();
       var card = getCard(b);
       var bIcon = (isCatT && card.catKey)
         ? '<span style=\'display:inline-block;width:20px;height:20px;vertical-align:middle;line-height:0\'>' + scaleSvg(getCatSvg(card.catKey)) + '</span>'
@@ -1648,7 +1648,7 @@ function renderSettings() {
   // Cards list
   var ch = '';
   (data.cards||[]).forEach(function(c){
-    var isCat = (currentTheme === 'cat' || currentTheme === 'coral' || currentTheme === 'mint');
+    var isCat = usesCatIcons();
     var cardIcon = isCat && c.catKey
       ? '<span style="display:inline-block;width:28px;height:28px;vertical-align:middle;line-height:0">' + scaleSvg(getCatSvg(c.catKey)) + '</span>'
       : '<span style="font-size:20px">' + c.emoji + '</span>';
@@ -2155,8 +2155,7 @@ var CAT_SVGS = {
 };
 var CAT_KEYS = ['cat1','fox','redcat','cat2','snake','bluecat'];
 
-var currentTheme = localStorage.getItem('okanesho_theme') || 'jp';
-
+// currentTheme 已在頁面頂部宣告，這裡不可再 var 一次（會在載入時把上面的值蓋掉）
 // applyTheme 已移至頁面頂部
 
 function getCatSvg(catKey) {
@@ -2174,7 +2173,7 @@ function renderBankPills(selectedName) {
     var html = '';
     cards.forEach(function(c) {
       var isActive = c.name === selectedName;
-      var isCat = (currentTheme === 'cat' || currentTheme === 'coral' || currentTheme === 'mint');
+      var isCat = usesCatIcons();
       var iconHtml = isCat && c.catKey
         ? '<span style="display:block;width:36px;height:36px;margin-bottom:2px">' + getCatSvg(c.catKey) + '</span>'
         : '<span style="display:block;font-size:16px;margin-bottom:2px">' + c.emoji + '</span>';
@@ -2236,7 +2235,7 @@ function addCard() {
   var name = document.getElementById('new-card-name').value.trim();
   if (!name) { showToast('⚠️ 請輸入卡片名稱'); return; }
   var catKeyIdx = data.cards.length % CAT_KEYS.length;
-  var newCatKey = (currentTheme === 'cat' && selectedCatKey) ? selectedCatKey : CAT_KEYS[catKeyIdx];
+  var newCatKey = (usesCatIcons() && selectedCatKey) ? selectedCatKey : CAT_KEYS[catKeyIdx];
   data.cards.push({ id: mkId(), name: name, emoji: selectedCardEmoji, color: selectedCardColor, textColor: selectedCardTextColor, catKey: newCatKey });
   save();
   document.getElementById('new-card-name').value = '';
