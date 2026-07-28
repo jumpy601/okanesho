@@ -520,7 +520,7 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
 <body>
 
 <div class="toast" id="toast"></div>
-<div id="auth-bar" style="position:fixed;top:0;left:0;right:0;z-index:200;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:0.4px;color:var(--text3);flex:0 0 auto">v3.4 主題修正</span><div id="auth-bar-inner" style="display:flex;align-items:center;gap:8px"><button onclick="showLoginModal()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text2)"><span>☁️</span>信箱登入同步</button></div></div>
+<div id="auth-bar" style="position:fixed;top:0;left:0;right:0;z-index:200;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:0.4px;color:var(--text3);flex:0 0 auto">v3.6 版面診斷</span><div id="auth-bar-inner" style="display:flex;align-items:center;gap:8px"><button onclick="showLoginModal()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text2)"><span>☁️</span>信箱登入同步</button></div></div>
 <div id="sync-status" style="position:fixed;top:34px;right:12px;z-index:199;font-size:11px;color:var(--text3);font-weight:600"></div>
 
 <!-- ══ PAGE: 記帳 ══ -->
@@ -780,6 +780,7 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
     </div>
     <div style="padding:0 14px 14px">
       <button class="data-btn" style="width:100%" onclick="undoImport()">⏪ 復原匯入前</button>
+      <button class="data-btn" style="width:100%;margin-top:8px" onclick="showViewportDiag()">🔧 版面診斷</button>
       <div style="font-size:11px;color:var(--text3);margin-top:8px;line-height:1.5">匯入備份前會自動保留一份匯入前的資料，選錯檔案時按上面這顆就能還原。</div>
     </div>
   </div>
@@ -2384,6 +2385,95 @@ function flushSync() {
 document.addEventListener('visibilitychange', function(){
   if (document.visibilityState === 'hidden') flushSync();
 });
+
+// ── 固定列的實際定位 ──────────────────────────────
+// iOS 的 layout viewport 與實際看得到的 visual viewport 可能不一致
+// （鍵盤、工具列收合、縮放都會造成），此時 CSS 的 top:0 / bottom:0 會定錯位置。
+// 這裡直接依 visualViewport 把上下兩條固定列釘到「真正看得到」的邊緣。
+var VP = (function () {
+  var vv = window.visualViewport;
+
+  function measure() {
+    var bar = document.querySelector('.tab-bar');
+    var auth = document.getElementById('auth-bar');
+    return {
+      innerH: window.innerHeight,
+      clientH: document.documentElement.clientHeight,
+      screenH: window.screen.height,
+      vvH: vv ? Math.round(vv.height) : null,
+      vvOffTop: vv ? Math.round(vv.offsetTop) : null,
+      vvPageTop: vv ? Math.round(vv.pageTop) : null,
+      vvScale: vv ? +(vv.scale || 1).toFixed(3) : null,
+      scrollY: Math.round(window.scrollY),
+      standalone: !!(window.navigator.standalone || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)),
+      dpr: window.devicePixelRatio,
+      barRect: bar ? JSON.stringify({ t: Math.round(bar.getBoundingClientRect().top), b: Math.round(bar.getBoundingClientRect().bottom), h: Math.round(bar.getBoundingClientRect().height) }) : null,
+      authRect: auth ? JSON.stringify({ t: Math.round(auth.getBoundingClientRect().top), b: Math.round(auth.getBoundingClientRect().bottom) }) : null,
+      safeBottom: getComputedStyle(document.documentElement).getPropertyValue('--sab') || 'n/a'
+    };
+  }
+
+  function sync() {
+    var bar = document.querySelector('.tab-bar');
+    var auth = document.getElementById('auth-bar');
+    if (!vv) return;
+    // 看得到的視窗，在 layout viewport 座標系中的上下緣
+    var visTop = vv.offsetTop;
+    var visBottom = vv.offsetTop + vv.height;
+    var drift = Math.abs(visTop) + Math.abs(window.innerHeight - visBottom);
+
+    if (drift < 24) {
+      // 沒有偏移：交還給原本的 CSS，避免正常情況被我們搞壞
+      if (bar) { bar.style.top = ''; bar.style.bottom = ''; bar.style.visibility = ''; }
+      if (auth) { auth.style.top = ''; }
+      return;
+    }
+    if (auth) auth.style.top = visTop + 'px';
+    if (bar) {
+      var covered = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      if (covered > 200) {           // 鍵盤明顯開著：收起來，本來就被擋住
+        bar.style.visibility = 'hidden';
+      } else {
+        bar.style.visibility = '';
+        bar.style.top = (visBottom - bar.offsetHeight) + 'px';
+        bar.style.bottom = 'auto';
+      }
+    }
+  }
+
+  function nudge() { sync(); window.scrollBy(0, 1); window.scrollBy(0, -1); }
+
+  if (vv) {
+    vv.addEventListener('resize', sync);
+    vv.addEventListener('scroll', sync);
+  }
+  window.addEventListener('scroll', sync, { passive: true });
+  document.addEventListener('focusout', function () { setTimeout(nudge, 100); });
+  window.addEventListener('orientationchange', function () { setTimeout(nudge, 300); });
+  document.addEventListener('DOMContentLoaded', sync);
+
+  return { sync: sync, nudge: nudge, measure: measure };
+})();
+
+// 版面診斷面板（iPhone 沒有 F12，只能自己內建）
+function showViewportDiag() {
+  var m = VP.measure();
+  var rows = '';
+  for (var k in m) rows += '<div style="display:flex;justify-content:space-between;gap:12px;padding:3px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text3)">' + k + '</span><span style="font-weight:700;word-break:break-all;text-align:right">' + m[k] + '</span></div>';
+  var txt = JSON.stringify(m, null, 1);
+  var wrap = document.createElement('div');
+  wrap.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;padding:20px';
+  wrap.innerHTML = '<div style="background:var(--surface);border-radius:14px;padding:16px;max-height:80vh;overflow:auto;width:100%;max-width:420px;font-size:12px;font-family:inherit;color:var(--text)">'
+    + '<div style="font-weight:800;margin-bottom:10px">🔧 版面診斷</div>' + rows
+    + '<textarea id="vp-diag-text" readonly style="width:100%;height:110px;margin-top:10px;font-size:10px;font-family:monospace;border:1.5px solid var(--border);border-radius:8px;padding:8px;background:var(--bg);color:var(--text)"></textarea>'
+    + '<div style="display:flex;gap:8px;margin-top:10px">'
+    + '<button class="data-btn" style="flex:1" onclick="VP.nudge();showToast(\'已重新定位\')">↻ 重新定位</button>'
+    + '<button class="data-btn" style="flex:1" onclick="this.closest(\'div[style*=9999]\').remove()">關閉</button>'
+    + '</div></div>';
+  document.body.appendChild(wrap);
+  document.getElementById('vp-diag-text').value = txt;
+  wrap.addEventListener('click', function (e) { if (e.target === wrap) wrap.remove(); });
+}
 window.addEventListener('pagehide', flushSync);
 
 function loadFromFirebase() {
