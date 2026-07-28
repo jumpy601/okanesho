@@ -317,7 +317,7 @@ input:focus, select:focus {
 .set-row:last-child { border-bottom: none; }
 .set-row-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 7px; }
 .set-name { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
-.set-row-bottom { display: flex; align-items: center; gap: 8px; }
+.set-row-bottom { display: flex; align-items: center; gap: 6px; }
 .set-input {
   flex: 1; text-align: right; font-weight: 700; font-size: 15px;
   background: var(--bg); border: 1.5px solid var(--border);
@@ -405,7 +405,7 @@ input:focus, select:focus {
 .empty-text { font-size: 14px; }
 
 .type-btn {
-  width: 28px; height: 28px; border-radius: 7px; border: 1.5px solid var(--border);
+  width: 27px; height: 27px; border-radius: 7px; border: 1.5px solid var(--border); flex: 0 0 auto;
   background: var(--bg2); cursor: pointer; font-size: 14px;
   display: flex; align-items: center; justify-content: center;
   transition: all 0.15s;
@@ -528,7 +528,7 @@ body.theme-mint .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
 <body>
 
 <div class="toast" id="toast"></div>
-<div id="auth-bar" style="position:fixed;top:0;left:0;right:0;z-index:200;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:0.4px;color:var(--text3);flex:0 0 auto">v3.1 資料防護</span><div id="auth-bar-inner" style="display:flex;align-items:center;gap:8px"><button onclick="showLoginModal()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text2)"><span>☁️</span>信箱登入同步</button></div></div>
+<div id="auth-bar" style="position:fixed;top:0;left:0;right:0;z-index:200;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:0.4px;color:var(--text3);flex:0 0 auto">v3.3 週期設定</span><div id="auth-bar-inner" style="display:flex;align-items:center;gap:8px"><button onclick="showLoginModal()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text2)"><span>☁️</span>信箱登入同步</button></div></div>
 <div id="sync-status" style="position:fixed;top:34px;right:12px;z-index:199;font-size:11px;color:var(--text3);font-weight:600"></div>
 
 <!-- ══ PAGE: 記帳 ══ -->
@@ -643,6 +643,19 @@ body.theme-mint .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
       <button onclick="applyTheme('mint')" id="theme-btn-mint" style="flex:1;padding:8px 4px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg2);font-size:14px;cursor:pointer;font-family:inherit;color:var(--text2)">🌊<br><span style="font-size:10px;font-weight:700">薄荷</span></button>
     </div>
   </div>
+  <div style="padding:14px 16px 0">
+    <div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:8px;letter-spacing:0.5px">帳務週期</div>
+    <div class="set-card">
+      <div class="set-row">
+        <div class="set-row-top"><div class="set-name">📅 每月結算起始日</div></div>
+        <div class="set-row-bottom">
+          <select id="cycle-start-day" onchange="handleCycleDayChange(this)" style="flex:1;font-weight:700;font-size:15px;background:var(--bg);border:1.5px solid var(--border);border-radius:7px;padding:8px 12px;font-family:inherit;color:var(--text)"></select>
+          <span style="font-size:13px;color:var(--text2);flex:0 0 auto">日開始</span>
+        </div>
+        <div id="cycle-preview" style="font-size:11px;color:var(--text3);margin-top:10px;line-height:1.7"></div>
+      </div>
+    </div>
+  </div>
   <div style="display:flex;gap:0;margin:12px 16px 0;border:1.5px solid var(--border);border-radius:9px;overflow:hidden;background:var(--bg2)">
     <button id="stab-default" onclick="switchSettingsTab('default')" style="flex:1;padding:8px;font-size:13px;font-weight:700;border:none;cursor:pointer;background:var(--matcha);color:white;font-family:inherit">📋 預設值</button>
     <button id="stab-month" onclick="switchSettingsTab('month')" style="flex:1;padding:8px;font-size:13px;font-weight:700;border:none;cursor:pointer;background:transparent;color:var(--text2);font-family:inherit">📅 當月調整</button>
@@ -658,7 +671,7 @@ body.theme-mint .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
         <span>💰 薪資分配（預設）</span>
         <span id="default-remain-label" style="font-size:12px;font-weight:700;padding:2px 8px;border-radius:10px;background:var(--matcha-l);color:var(--matcha)"></span>
       </div>
-      <span style="font-size:11px;color:var(--text3)">🏦 存款　💾 預存　💸 支出</span>
+      <span style="font-size:11px;color:var(--text3)">🏦 存款　📈 投資　💾 預存　💸 支出</span>
     </div>
     <div class="set-card">
       <div id="budget-alloc-default-list"></div>
@@ -680,7 +693,7 @@ body.theme-mint .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
         <span>💰 薪資分配</span>
         <span id="alloc-remain-label" style="font-size:12px;font-weight:700;padding:2px 8px;border-radius:10px;background:var(--matcha-l);color:var(--matcha)"></span>
       </div>
-      <span style="font-size:11px;color:var(--text3)">🏦 存款　💾 預存　💸 支出　✏️ = 已覆蓋</span>
+      <span style="font-size:11px;color:var(--text3)">🏦 存款　📈 投資　💾 預存　💸 支出　✏️ = 已覆蓋</span>
     </div>
     <div class="set-card">
       <div id="budget-alloc-list"></div>
@@ -950,6 +963,7 @@ function applyTheme(theme) {
 }
 
 var STORAGE_KEY = 'finance_v3';
+var LAST_UID_KEY = 'okanesho_last_uid';
 var data = {
   transactions: [],
   cashTransactions: [],
@@ -972,6 +986,7 @@ var data = {
     { id: 9, name: '捐款（野灣）', amount: 0, included: true, note: '' },
     { id: 10, name: '共同錢包', amount: 0, included: true, note: '' }
   ],
+  cycleStartDay: 25,
   budgetAllocs: [
     { id: 1, name: '薪水', amount: 0, isIncome: true },
     { id: 2, name: '房租', amount: 12500, allocType: 'other' },
@@ -984,10 +999,14 @@ var data = {
   ]
 };
 
+var DEFAULT_DATA = JSON.parse(JSON.stringify(data));
+
 function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
 // 統一的資料正規化：load / 雲端載入 / 匯入 / 復原 四條路徑共用同一份，
 // 避免同樣的補預設值邏輯散在多處只改到其中一處（單檔 app 的經典漏改）
 function normalizeData() {
+  var cd = parseInt(data.cycleStartDay, 10);
+  data.cycleStartDay = (cd && cd >= 1 && cd <= 31) ? cd : 25;
   if (!Array.isArray(data.transactions)) data.transactions = [];
   if (!Array.isArray(data.cashTransactions)) data.cashTransactions = [];
   if (!Array.isArray(data.extraIncomes)) data.extraIncomes = [];
@@ -1048,43 +1067,57 @@ var currentPeriodOffset = 0;
 var currentChartYear = new Date().getFullYear();
 var settingsMonthOffset = 0;
 
-function getCurrentPeriod() {
-  var today = new Date();
-  var y = today.getFullYear(), m = today.getMonth() + 1, d = today.getDate();
-  if (d < 25) { m -= 1; if (m === 0) { m = 12; y -= 1; } }
-  m += currentPeriodOffset;
-  while (m > 12) { m -= 12; y += 1; }
-  while (m < 1)  { m += 12; y -= 1; }
+// ── 帳務週期：唯一的真實來源 ─────────────────────────
+// 每個帳號各自獨立（存在 data 裡，跟著該 uid 的雲端文件走）。
+// 姊姊的帳號設 5，你的設 25，兩邊互不影響。
+function cycleDay() {
+  var d = parseInt(data.cycleStartDay, 10);
+  if (!d || d < 1 || d > 31) d = 25;
+  return d;
+}
+// 該年月實際有幾天（處理 2 月、小月）
+function lastDayOfMonth(y, m) { return new Date(y, m, 0).getDate(); }
+function nextPeriodOf(p) {
+  var m = p.month + 1, y = p.year;
+  if (m > 12) { m = 1; y += 1; }
   return { year: y, month: m };
 }
-
-function getSettingsPeriod() {
-  var today = new Date();
-  var y = today.getFullYear(), m = today.getMonth() + 1, d = today.getDate();
-  if (d < 25) { m -= 1; if (m === 0) { m = 12; y -= 1; } }
-  m += settingsMonthOffset;
-  while (m > 12) { m -= 12; y += 1; }
-  while (m < 1)  { m += 12; y -= 1; }
-  return { year: y, month: m };
+// 起始日超過該月天數時往回夾（設 31 時，2 月從 28/29 起算，不會溢位到 3 月）
+function periodStart(p) {
+  var day = Math.min(cycleDay(), lastDayOfMonth(p.year, p.month));
+  return new Date(p.year, p.month - 1, day);
 }
+// 期末 = 下一期起始的前一毫秒，永遠首尾相接、不重疊也不漏日
+function periodEnd(p) { return new Date(periodStart(nextPeriodOf(p)).getTime() - 1); }
 
 function periodLabel(p) {
-  var endM = p.month + 1, endY = p.year;
-  if (endM > 12) { endM = 1; endY += 1; }
-  return p.year + '.' + p.month + '.25 – ' + endY + '.' + endM + '.24';
+  function f(d) { return d.getFullYear() + '.' + (d.getMonth()+1) + '.' + d.getDate(); }
+  return f(periodStart(p)) + ' – ' + f(periodEnd(p));
 }
 function periodShort(p) { return p.year + '/' + p.month; }
-function periodStart(p) { return new Date(p.year, p.month - 1, 25); }
-function periodEnd(p) {
-  var endM = p.month + 1, endY = p.year;
-  if (endM > 12) { endM = 1; endY += 1; }
-  return new Date(endY, endM - 1, 24, 23, 59, 59);
+
+function getCurrentPeriod() {
+  var t = new Date();
+  var p = periodOfDate(t.getFullYear() + '-' + pad(t.getMonth()+1) + '-' + pad(t.getDate()));
+  var m = p.month + currentPeriodOffset, y = p.year;
+  while (m > 12) { m -= 12; y += 1; }
+  while (m < 1)  { m += 12; y -= 1; }
+  return { year: y, month: m };
 }
-// 這筆日期屬於哪一期（25 日起算）
+function getSettingsPeriod() {
+  var t = new Date();
+  var p = periodOfDate(t.getFullYear() + '-' + pad(t.getMonth()+1) + '-' + pad(t.getDate()));
+  var m = p.month + settingsMonthOffset, y = p.year;
+  while (m > 12) { m -= 12; y += 1; }
+  while (m < 1)  { m += 12; y -= 1; }
+  return { year: y, month: m };
+}
+// 這筆日期屬於哪一期（依帳號設定的起始日）
 function periodOfDate(ds) {
   var d = new Date(ds + 'T00:00:00');
   var y = d.getFullYear(), m = d.getMonth() + 1;
-  if (d.getDate() < 25) { m -= 1; if (m === 0) { m = 12; y -= 1; } }
+  var startDay = Math.min(cycleDay(), lastDayOfMonth(y, m));
+  if (d.getDate() < startDay) { m -= 1; if (m === 0) { m = 12; y -= 1; } }
   return { year: y, month: m };
 }
 // 檢視某一期時，日期欄的合理預設：今天若落在該期就用今天，否則夾到期間邊界
@@ -1125,6 +1158,18 @@ function bankEmoji(bank) { return getCard(bank).emoji; }
 function bankColor(bank) { return getCard(bank).color; }
 
 // ── PERIOD SUMMARY ───────────────────────────────────
+// 分類定義集中一處：新增／改名分類只要改這裡
+var ALLOC_TYPES = [
+  { key: 'saving',  icon: '🏦', label: '存款' },
+  { key: 'invest',  icon: '📈', label: '投資' },
+  { key: 'reserve', icon: '💾', label: '預存' },
+  { key: 'other',   icon: '💸', label: '支出' }
+];
+function typeIcon(t) {
+  for (var i = 0; i < ALLOC_TYPES.length; i++) if (ALLOC_TYPES[i].key === t) return ALLOC_TYPES[i].icon;
+  return '💸';
+}
+
 function getPeriodSummary(p) {
   var txs = data.transactions.filter(function(tx){ return inPeriod(tx, p); });
   var cashTxs = (data.cashTransactions||[]).filter(function(tx){ return inPeriod(tx, p); });
@@ -1138,35 +1183,38 @@ function getPeriodSummary(p) {
   var extraTotal = extras.reduce(function(s,e){ return s+e.amount; }, 0);
   var income = salary + extraTotal;
 
-  // Savings (period-specific)
-  var allocSavings = data.budgetAllocs.filter(function(a){ return a.allocType === 'saving'; })
-    .reduce(function(s,a){ return s + getAllocAmount(a.id, p); }, 0);
-  var extraSavings = extras.reduce(function(sumE, ei){
-    return sumE + (ei.allocations||[]).filter(function(al){ return al.type==='saving'; })
-      .reduce(function(ss,al){ return ss+al.amount; }, 0);
-  }, 0);
-  var totalSavings = allocSavings + extraSavings;
+  // 薪資分配：依 allocType 分桶（一個 type 一行，避免漏算）
+  function allocSum(type) {
+    return data.budgetAllocs.filter(function(a){ return a.allocType === type && !a.isIncome; })
+      .reduce(function(s,a){ return s + getAllocAmount(a.id, p); }, 0);
+  }
+  // 額外收入的分配：同樣依 type 分桶。
+  // v3.2 修正：以前只算 saving，reserve / invest 被吃掉（額外收入進了餘額卻沒扣回去）
+  function extraSum(type) {
+    return extras.reduce(function(sumE, ei){
+      return sumE + (ei.allocations||[]).filter(function(al){ return al.type===type; })
+        .reduce(function(ss,al){ return ss+al.amount; }, 0);
+    }, 0);
+  }
 
-  // Reserves (period-specific)
-  var totalReserve = data.budgetAllocs.filter(function(a){ return a.allocType === 'reserve'; })
-    .reduce(function(s,a){ return s + getAllocAmount(a.id, p); }, 0);
+  var totalSavings = allocSum('saving')  + extraSum('saving');   // 🏦 存款
+  var totalInvest  = allocSum('invest')  + extraSum('invest');   // 📈 投資
+  var totalReserve = allocSum('reserve') + extraSum('reserve');  // 💾 預存
 
   // Spending
   var ccTotal = txs.reduce(function(s,tx){ return s+tx.amount; }, 0);
   var cashTotal = cashTxs.reduce(function(s,tx){ return s+tx.amount; }, 0);
 
-  // Fixed expenses: display only, NOT in spending calc
-  var fixedTotal = data.fixedExpenses.filter(function(e){ return e.included!==false; })
+  // 固定支出：v3.2 修正——改用該期間的覆蓋值，否則看歷史月份會顯示「今天」的金額
+  var fixedTotal = getFixedExpensesForPeriod(p).filter(function(e){ return e.included!==false; })
     .reduce(function(s,e){ return s+(e.amount||0); }, 0);
 
-  // Other allocs (房租 etc)
-  var otherAllocs = data.budgetAllocs.filter(function(a){
-    return a.allocType === 'other' && !a.isIncome;
-  }).reduce(function(s,a){ return s + getAllocAmount(a.id, p); }, 0);
+  // 💸 支出型分配（房租、生活費預算…）
+  var otherAllocs = allocSum('other');
 
-  // Remain = income - cc - cash - savings - reserve
-  // otherAllocs 不計入（會被記到現金記帳，避免重複）
-  var totalOut = ccTotal + cashTotal + totalSavings + totalReserve;
+  // 本期餘額 = 收入 − 信用卡 − 現金 − 存款 − 投資 − 預存
+  // otherAllocs 不計入（實際花費會透過信用卡／現金記帳進來，計入會重複扣）
+  var totalOut = ccTotal + cashTotal + totalSavings + totalInvest + totalReserve;
   var remain = income - totalOut;
 
   var settled = txs.filter(function(t){return t.settled;}).reduce(function(s,t){return s+t.amount;},0);
@@ -1174,7 +1222,7 @@ function getPeriodSummary(p) {
   return {
     income: income, salary: salary, extraTotal: extraTotal,
     ccTotal: ccTotal, cashTotal: cashTotal,
-    savings: totalSavings, reserve: totalReserve,
+    savings: totalSavings, invest: totalInvest, reserve: totalReserve,
     fixedTotal: fixedTotal,
     otherAllocs: otherAllocs,
     remain: remain, settled: settled
@@ -1390,11 +1438,16 @@ function renderOverview() {
   html += '<div class="hero-col"><div class="hero-col-label">💳 信用卡</div><div class="hero-col-val">$' + s.ccTotal.toLocaleString() + '</div></div>';
   html += '<div class="hero-col"><div class="hero-col-label">💵 現金</div><div class="hero-col-val">$' + s.cashTotal.toLocaleString() + '</div></div>';
   html += '</div>';
-  // Row 2: savings / reserve / fixed
+  // Row 2: 存款 / 投資 / 預存（icon 與設定頁的分類按鈕一致）
   html += '<div class="hero-cols" style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.15)">';
-  html += '<div class="hero-col"><div class="hero-col-label">💾 投資存款</div><div class="hero-col-val">$' + s.savings.toLocaleString() + '</div></div>';
-  html += '<div class="hero-col"><div class="hero-col-label">🏦 預存</div><div class="hero-col-val">$' + s.reserve.toLocaleString() + '</div></div>';
-  html += '<div class="hero-col"><div class="hero-col-label">📌 固定支出</div><div class="hero-col-val" style="font-size:13px;opacity:0.75">$' + s.fixedTotal.toLocaleString() + '</div></div>';
+  html += '<div class="hero-col"><div class="hero-col-label">🏦 存款</div><div class="hero-col-val">$' + s.savings.toLocaleString() + '</div></div>';
+  html += '<div class="hero-col"><div class="hero-col-label">📈 投資</div><div class="hero-col-val">$' + s.invest.toLocaleString() + '</div></div>';
+  html += '<div class="hero-col"><div class="hero-col-label">💾 預存</div><div class="hero-col-val">$' + s.reserve.toLocaleString() + '</div></div>';
+  html += '</div>';
+  // Row 3: 固定支出（參考值，不列入本期餘額）
+  html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.15);display:flex;justify-content:space-between;align-items:center;opacity:0.75">';
+  html += '<div style="font-size:12px">📌 固定支出<span style="font-size:10px;opacity:0.8">（參考，未列入餘額）</span></div>';
+  html += '<div style="font-size:14px;font-weight:700">$' + s.fixedTotal.toLocaleString() + '</div>';
   html += '</div>';
   html += '</div>';
 
@@ -1410,7 +1463,7 @@ function renderOverview() {
       html += '<div style="display:flex;justify-content:space-between;width:100%"><div class="ov-row-name">🎁 ' + e.name + '</div><div class="ov-row-val val-green">+$' + e.amount.toLocaleString() + '</div></div>';
       if (unalloc > 0) html += '<div style="font-size:11px;color:var(--kinari);background:var(--kinari-l);padding:3px 8px;border-radius:8px">⚠️ 未分配 $' + unalloc.toLocaleString() + '</div>';
       (e.allocations||[]).forEach(function(al){
-        html += '<div style="display:flex;justify-content:space-between;width:100%;padding-left:8px;font-size:13px"><div style="color:var(--text2)">' + (al.type==='saving'?'🏦':'💾') + ' ' + al.name + '</div><div style="font-weight:600">$' + al.amount.toLocaleString() + '</div></div>';
+        html += '<div style="display:flex;justify-content:space-between;width:100%;padding-left:8px;font-size:13px"><div style="color:var(--text2)">' + typeIcon(al.type) + ' ' + al.name + '</div><div style="font-weight:600">$' + al.amount.toLocaleString() + '</div></div>';
       });
       html += '<button data-eid="' + e.id + '" onclick="openExtraAllocById(this)" style="font-size:12px;padding:5px 10px;border-radius:7px;border:1.5px dashed var(--border);background:var(--bg);cursor:pointer;font-family:inherit;color:var(--text2)">✏️ 編輯分配</button>';
       html += '</div>';
@@ -1423,7 +1476,7 @@ function renderOverview() {
   html += '<div class="ov-card-header"><div class="ov-card-title">💰 薪資分配</div></div>';
   data.budgetAllocs.forEach(function(a){
     var amt = getAllocAmount(a.id, p);
-    var icon = a.isIncome||a.allocType==='income' ? '💴' : a.allocType==='saving' ? '🏦' : a.allocType==='reserve' ? '💾' : '💸';
+    var icon = (a.isIncome||a.allocType==='income') ? '💴' : typeIcon(a.allocType);
     var cls = (a.isIncome||a.allocType==='income') ? 'val-green' : '';
     html += '<div class="ov-row"><div class="ov-row-name">' + icon + ' ' + a.name + '</div>';
     html += '<div class="ov-row-val ' + cls + '">' + ((a.isIncome||a.allocType==='income')?'+':'-') + 'NT$' + amt.toLocaleString() + '</div></div>';
@@ -1503,6 +1556,7 @@ function changeSettingsMonth(delta) {
 
 function renderSettings() {
   var p = getSettingsPeriod();
+  renderCycleSetting();
   var extraSection = document.getElementById('extra-income-section');
   if (extraSection) extraSection.style.display = (currentSettingsTab === 'month') ? 'block' : 'none';
   setTimeout(updateDefaultRemainLabel, 50);
@@ -1525,14 +1579,14 @@ function renderSettings() {
   hd = '';
   data.budgetAllocs.filter(function(a){return !a.isIncome && a.allocType!=='income';}).forEach(function(a){
     var atype = a.allocType || 'other';
-    var icon = atype==='saving'?'🏦':atype==='reserve'?'💾':'💸';
+    var icon = typeIcon(atype);
     hd += '<div class="set-row">';
     hd += '<div class="set-row-top"><div class="set-name">' + icon + ' ' + a.name + '</div></div>';
     hd += '<div class="set-row-bottom">';
     hd += '<input class="set-input" type="number" inputmode="decimal" value="' + (a.amount||0) + '" data-aid="' + a.id + '" onchange="handleDefaultAllocInput(this)">';
-    hd += '<button class="type-btn' + (atype==='saving'?' type-active':'') + '" data-aid="' + a.id + '" data-t="saving" onclick="handleAllocType(this)">🏦</button>';
-    hd += '<button class="type-btn' + (atype==='reserve'?' type-active':'') + '" data-aid="' + a.id + '" data-t="reserve" onclick="handleAllocType(this)">💾</button>';
-    hd += '<button class="type-btn' + (atype==='other'?' type-active':'') + '" data-aid="' + a.id + '" data-t="other" onclick="handleAllocType(this)">💸</button>';
+    ALLOC_TYPES.forEach(function(t){
+      hd += '<button class="type-btn' + (atype===t.key?' type-active':'') + '" data-aid="' + a.id + '" data-t="' + t.key + '" onclick="handleAllocType(this)">' + t.icon + '</button>';
+    });
     hd += '<button class="icon-btn del" data-aid="' + a.id + '" onclick="removeAllocById(this)">🗑</button>';
     hd += '</div></div>';
   });
@@ -1564,7 +1618,7 @@ function renderSettings() {
   hm = '';
   data.budgetAllocs.filter(function(a){return !a.isIncome && a.allocType!=='income';}).forEach(function(a){
     var atype = a.allocType || 'other';
-    var icon = atype==='saving'?'🏦':atype==='reserve'?'💾':'💸';
+    var icon = typeIcon(atype);
     var hasOverride = data.monthlyOverrides[key] && data.monthlyOverrides[key][a.id] !== undefined;
     var val = getAllocAmount(a.id, p);
     hm += '<div class="set-row">';
@@ -1630,6 +1684,39 @@ function renderSettings() {
 
 
 
+function renderCycleSetting() {
+  var sel = document.getElementById('cycle-start-day');
+  if (!sel) return;
+  var cur = cycleDay();
+  var opts = '';
+  for (var d = 1; d <= 31; d++) {
+    opts += '<option value="' + d + '"' + (d === cur ? ' selected' : '') + '>' + d + '</option>';
+  }
+  sel.innerHTML = opts;
+
+  var pv = document.getElementById('cycle-preview');
+  if (!pv) return;
+  var p = getCurrentPeriod();
+  var txt = '目前這一期：<b>' + periodLabel(p) + '</b>';
+  if (cur === 1) {
+    txt += '<br>設 1 = 完全照日曆月計算。';
+  } else if (cur > 28) {
+    txt += '<br>設 ' + cur + ' 時，該月若沒有這一天（例如 2 月），會自動改用該月最後一天起算。';
+  }
+  txt += '<br><span style="opacity:0.85">改變起始日只是重新分組，不會刪除任何一筆帳；改回去就會恢復原狀。</span>';
+  pv.innerHTML = txt;
+}
+
+function handleCycleDayChange(el) {
+  var d = parseInt(el.value, 10);
+  if (!d || d < 1 || d > 31) return;
+  data.cycleStartDay = d;
+  save();
+  syncDateInputs();
+  renderAll();
+  showToast('📅 結算起始日已改為每月 ' + d + ' 日');
+}
+
 function updateDefaultRemainLabel() {
   var income = 0;
   data.budgetAllocs.forEach(function(a) {
@@ -1668,12 +1755,13 @@ function snapshotHistoryMonths() {
   var p = getCurrentPeriod();
   var currentKey = periodKey(p);
   var months = {};
+  // 用帳務週期的「期間」當 key，不能用日曆月——起始日 25 時，7/10 屬於 6 月期
   (data.transactions||[]).forEach(function(tx){
-    var d = new Date(tx.date); var k = d.getFullYear()+'-'+(d.getMonth()+1);
+    var k = periodKey(periodOfDate(tx.date));
     if(k!==currentKey) months[k]=true;
   });
   (data.cashTransactions||[]).forEach(function(tx){
-    var d = new Date(tx.date); var k = d.getFullYear()+'-'+(d.getMonth()+1);
+    var k = periodKey(periodOfDate(tx.date));
     if(k!==currentKey) months[k]=true;
   });
   Object.keys(months).forEach(function(key){
@@ -1700,7 +1788,7 @@ function getFixedExpensesForPeriod(p) {
 
 function handleDefaultAllocInput(el) {
   // Updates the base default value (a.amount)
-  var aid = parseInt(el.getAttribute('data-aid'));
+  var aid = el.getAttribute('data-aid');
   var a = data.budgetAllocs.find(function(x){return x.id==aid;});
   if (a) { snapshotHistoryMonths(); a.amount = parseFloat(el.value)||0; save(); renderOverview(); updateAllocRemainLabel(); updateDefaultRemainLabel(); }
 }
@@ -1724,18 +1812,18 @@ function handleAllocInput(el) {
   updateAllocRemainLabel();
 }
 function handleAllocType(el) {
-  var aid = parseInt(el.getAttribute('data-aid'));
+  var aid = el.getAttribute('data-aid');
   var t = el.getAttribute('data-t');
   var a = data.budgetAllocs.find(function(x){return x.id==aid;});
   if (a) { a.allocType = t; save(); renderSettings(); }
 }
 function handleFixedToggle(el) {
-  var id = parseInt(el.getAttribute('data-feid'));
+  var id = el.getAttribute('data-feid');
   var e = data.fixedExpenses.find(function(x){return x.id==id;});
   if (e) { snapshotHistoryMonths(); e.included = el.checked; save(); renderSettings(); renderOverview(); }
 }
 function handleFixedAmount(el) {
-  var id = parseInt(el.getAttribute('data-feid'));
+  var id = el.getAttribute('data-feid');
   var e = data.fixedExpenses.find(function(x){return x.id==id;});
   if (!e) return;
   var p = getSettingsPeriod();
@@ -1753,17 +1841,17 @@ function handleFixedAmount(el) {
   save(); renderOverview();
 }
 function handleFixedNote(el) {
-  var id = parseInt(el.getAttribute('data-feid'));
+  var id = el.getAttribute('data-feid');
   var e = data.fixedExpenses.find(function(x){return x.id==id;});
   if (e) { e.note = el.value; save(); }
 }
 function removeFixedById(el) {
-  var id = parseInt(el.getAttribute('data-feid'));
+  var id = el.getAttribute('data-feid');
   data.fixedExpenses = data.fixedExpenses.filter(function(x){return x.id!=id;});
   save(); renderSettings(); renderOverview();
 }
 function removeAllocById(el) {
-  var aid = parseInt(el.getAttribute('data-aid'));
+  var aid = el.getAttribute('data-aid');
   data.budgetAllocs = data.budgetAllocs.filter(function(x){return x.id!=aid;});
   save(); renderSettings(); renderOverview();
 }
@@ -1854,8 +1942,9 @@ function openExtraAlloc(id) {
     h += '<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">';
     h += '<select data-eid="' + id + '" data-ai="' + ai + '" data-f="type" onchange="allocChange(this)" style="padding:6px 8px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;background:var(--bg);flex:1">';
     h += '<option value="saving"' + (al.type==='saving'?' selected':'') + '>🏦 存款</option>';
+    h += '<option value="invest"' + (al.type==='invest'?' selected':'') + '>📈 投資</option>';
     h += '<option value="reserve"' + (al.type==='reserve'?' selected':'') + '>💾 預存</option>';
-    h += '<option value="spending"' + (al.type==='spending'?' selected':'') + '>💸 消費</option>';
+    h += '<option value="spending"' + (al.type==='spending'?' selected':'') + '>💸 消費（不扣餘額，實際花費由記帳計）</option>';
     h += '</select>';
     h += '<input type="number" value="' + al.amount + '" inputmode="decimal" data-eid="' + id + '" data-ai="' + ai + '" data-f="amount" onchange="allocChange(this)" style="width:100px;padding:6px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:14px;font-family:inherit;text-align:right;background:var(--bg)">';
     h += '<button data-eid="' + id + '" data-ai="' + ai + '" onclick="allocRemove(this)" style="width:28px;height:28px;border:none;background:var(--sakura-l);border-radius:7px;cursor:pointer;flex-shrink:0">✕</button>';
@@ -1918,9 +2007,9 @@ function renderChart() {
     var s = getPeriodSummary(p);
     labels.push(mi + '月');
     incomeData.push(s.income);
-    savingsData.push(s.savings + s.reserve);
+    savingsData.push(s.savings + s.invest + s.reserve);
     spendingData.push(s.ccTotal + s.cashTotal);
-    months.push({ m: mi, income: s.income, savings: s.savings+s.reserve, spending: s.ccTotal+s.cashTotal });
+    months.push({ m: mi, income: s.income, savings: s.savings+s.invest+s.reserve, spending: s.ccTotal+s.cashTotal });
   }
 
   var canvas = document.getElementById('year-chart');
@@ -1987,7 +2076,7 @@ function renderChart() {
     listHtml += '<div class="ov-card" style="margin-top:8px">';
     listHtml += '<div class="ov-card-header"><div class="ov-card-title">' + (mii+1) + ' 月</div><div class="ov-card-total ' + (bal>=0?'val-green':'val-rose') + '">' + (bal>=0?'+':'') + '$' + bal.toLocaleString() + '</div></div>';
     listHtml += '<div class="ov-row"><div class="ov-row-name">💴 收入</div><div class="ov-row-val val-green">$' + mo.income.toLocaleString() + '</div></div>';
-    listHtml += '<div class="ov-row"><div class="ov-row-name">💾🏦 存款+預存</div><div class="ov-row-val val-blue">$' + mo.savings.toLocaleString() + '</div></div>';
+    listHtml += '<div class="ov-row"><div class="ov-row-name">🏦📈💾 存款+投資+預存</div><div class="ov-row-val val-blue">$' + mo.savings.toLocaleString() + '</div></div>';
     listHtml += '<div class="ov-row"><div class="ov-row-name">💸 實際支出</div><div class="ov-row-val val-rose">$' + mo.spending.toLocaleString() + '</div></div>';
     listHtml += '</div>';
   }
@@ -2157,7 +2246,7 @@ function addCard() {
 }
 
 function removeCard(el) {
-  var cid = parseInt(el.getAttribute('data-cid'));
+  var cid = el.getAttribute('data-cid');
   data.cards = (data.cards||[]).filter(function(c){ return c.id != cid; });
   save(); renderSettings(); renderBankPills();
 }
@@ -2212,6 +2301,15 @@ function updateAuthBar(user) {
   if (!bar) { setTimeout(function(){ updateAuthBar(user); }, 100); return; }
   if (user) {
     currentUser = user;
+    // 換帳號防汙染：雲端沒有文件時 loadFromFirebase 會把「本機現況」推上去。
+    // 若本機殘留的是上一個帳號的資料，就會汙染新帳號——先清乾淨再同步。
+    var lastUid = localStorage.getItem(LAST_UID_KEY);
+    if (lastUid && lastUid !== user.uid) {
+      localStorage.removeItem(STORAGE_KEY);
+      data = JSON.parse(JSON.stringify(DEFAULT_DATA));
+      normalizeData();
+    }
+    localStorage.setItem(LAST_UID_KEY, user.uid);
     var displayName = user.displayName || user.email.split('@')[0];
     bar.innerHTML = '<span style="font-size:12px;color:var(--text2)">☁️ ' + displayName + '</span>'
       + '<button onclick="signOut()" style="font-size:11px;padding:4px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);cursor:pointer;font-family:inherit;color:var(--text2)">登出</button>';
