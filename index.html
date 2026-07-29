@@ -468,9 +468,9 @@ body.theme-cat .empty-icon { font-size: 0; }
 body.theme-cat .page-header h1 .emoji { font-size: 0; }
 body.theme-cat #theme-toggle-label-jp { display: none; }
 body.theme-cat #theme-toggle-label-cat { display: inline; }
-/* ↓ 貓咪圖示家族共用（見 JS 的 CAT_ICON_THEMES），不要再寫成 body.theme-cat */
-body.cat-icons #card-preset-pills { display: none !important; }
-body.cat-icons #card-cat-pills { display: flex !important; }
+/* 卡片樣式選擇器：四個主題一律用貓咪，emoji 那組已停用 */
+#card-preset-pills { display: none !important; }
+#card-cat-pills { display: flex !important; }
 
 
 /* ══ 貓咪主題 ══ */
@@ -527,7 +527,7 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
 <body>
 
 <div class="toast" id="toast"></div>
-<div id="auth-bar" style="position:fixed;top:0;left:0;right:0;z-index:200;transform:translateZ(0);display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:0.4px;color:var(--text3);flex:0 0 auto">v3.8 現金編輯</span><div id="auth-bar-inner" style="display:flex;align-items:center;gap:8px"><button onclick="showLoginModal()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text2)"><span>☁️</span>信箱登入同步</button></div></div>
+<div id="auth-bar" style="position:fixed;top:0;left:0;right:0;z-index:200;transform:translateZ(0);display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:0.4px;color:var(--text3);flex:0 0 auto">v3.9 收尾與體驗</span><div id="auth-bar-inner" style="display:flex;align-items:center;gap:8px"><button onclick="showLoginModal()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text2)"><span>☁️</span>信箱登入同步</button></div></div>
 <div id="sync-status" style="position:fixed;top:34px;right:12px;z-index:199;font-size:11px;color:var(--text3);font-weight:600"></div>
 
 <!-- ══ PAGE: 記帳 ══ -->
@@ -552,6 +552,13 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
   </div>
   <div class="washi"></div>
 
+  <div style="padding:12px 16px 0;position:relative">
+    <input type="search" id="tx-search" placeholder="🔍 搜尋所有紀錄（不限月份）" oninput="renderSearch()"
+      style="width:100%;padding:9px 34px 9px 12px;border:1.5px solid var(--border);border-radius:9px;background:var(--surface);font-family:inherit;font-size:14px;color:var(--text)">
+    <button id="search-clear" onclick="clearSearch()" style="display:none;position:absolute;right:24px;top:20px;background:none;border:none;font-size:15px;color:var(--text3);cursor:pointer;padding:2px 4px">✕</button>
+  </div>
+  <div id="search-results" style="display:none"></div>
+
   <!-- CC section -->
   <div id="section-cc">
     <div class="add-card">
@@ -560,7 +567,7 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
         <div class="field-row">
           <div class="field" style="flex:2">
             <div class="field-label">品項</div>
-            <input type="text" id="input-name" placeholder="例：711、Uber Eats">
+            <input type="text" id="input-name" list="name-suggestions" placeholder="例：711、Uber Eats" oninput="onNameInput('input-name','input-amount')">
           </div>
           <div class="field" style="flex:1">
             <div class="field-label">金額</div>
@@ -591,7 +598,7 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
         <div class="field-row">
           <div class="field" style="flex:2">
             <div class="field-label">品項</div>
-            <input type="text" id="cash-name" placeholder="例：早餐、停車費">
+            <input type="text" id="cash-name" list="name-suggestions" placeholder="例：早餐、停車費" oninput="onNameInput('cash-name','cash-amount')">
           </div>
           <div class="field" style="flex:1">
             <div class="field-label">金額</div>
@@ -670,7 +677,7 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
         <span>💰 薪資分配（預設）</span>
         <span id="default-remain-label" style="font-size:12px;font-weight:700;padding:2px 8px;border-radius:10px;background:var(--matcha-l);color:var(--matcha)"></span>
       </div>
-      <span style="font-size:11px;color:var(--text3)">🏦 存款　📈 投資　💾 預存　💸 支出</span>
+      <span style="font-size:11px;color:var(--text3)">🏦 存款　📈 投資　💾 預存　📋 預算</span>
     </div>
     <div class="set-card">
       <div id="budget-alloc-default-list"></div>
@@ -692,7 +699,7 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
         <span>💰 薪資分配</span>
         <span id="alloc-remain-label" style="font-size:12px;font-weight:700;padding:2px 8px;border-radius:10px;background:var(--matcha-l);color:var(--matcha)"></span>
       </div>
-      <span style="font-size:11px;color:var(--text3)">🏦 存款　📈 投資　💾 預存　💸 支出　✏️ = 已覆蓋</span>
+      <span style="font-size:11px;color:var(--text3)">🏦 存款　📈 投資　💾 預存　📋 預算　✏️ = 已覆蓋</span>
     </div>
     <div class="set-card">
       <div id="budget-alloc-list"></div>
@@ -896,6 +903,8 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
 </nav>
 
 <!-- ══ EDIT MODAL ══ -->
+<datalist id="name-suggestions"></datalist>
+
 <div class="modal-overlay" id="edit-modal">
   <div class="modal">
     <div class="modal-handle"></div>
@@ -940,6 +949,8 @@ var currentTheme = localStorage.getItem('okanesho_theme') || 'jp';
 // 以後要讓新主題也用貓咪圖示，只加這個陣列一行，CSS 和其餘 JS 都不用動。
 var CAT_ICON_THEMES = ['cat', 'coral', 'mint'];
 function usesCatIcons() { return CAT_ICON_THEMES.indexOf(currentTheme) !== -1; }
+// 卡片圖示與主題脫鉤：四個主題一律用貓咪樣式（tab 列的圖示仍照 CAT_ICON_THEMES 走）
+function usesCatCards() { return true; }
 
 function applyTheme(theme) {
   currentTheme = theme;
@@ -962,9 +973,8 @@ function applyTheme(theme) {
       btn.style.borderColor = 'var(--border)';
     }
   });
-  var isCat = usesCatIcons();
   renderBankPills();
-  if (isCat) fillCatPillSvgs();
+  fillCatPillSvgs();
   var extraSection = document.getElementById('extra-income-section');
   if (extraSection) extraSection.style.display = 'block';
   if (typeof saveToFirebase === 'function') saveToFirebase();
@@ -1171,7 +1181,7 @@ var ALLOC_TYPES = [
   { key: 'saving',  icon: '🏦', label: '存款' },
   { key: 'invest',  icon: '📈', label: '投資' },
   { key: 'reserve', icon: '💾', label: '預存' },
-  { key: 'other',   icon: '💸', label: '支出' }
+  { key: 'other',   icon: '📋', label: '預算' }
 ];
 function typeIcon(t) {
   for (var i = 0; i < ALLOC_TYPES.length; i++) if (ALLOC_TYPES[i].key === t) return ALLOC_TYPES[i].icon;
@@ -1217,11 +1227,8 @@ function getPeriodSummary(p) {
   var fixedTotal = getFixedExpensesForPeriod(p).filter(function(e){ return e.included!==false; })
     .reduce(function(s,e){ return s+(e.amount||0); }, 0);
 
-  // 💸 支出型分配（房租、生活費預算…）
-  var otherAllocs = allocSum('other');
-
   // 本期餘額 = 收入 − 信用卡 − 現金 − 存款 − 投資 − 預存
-  // otherAllocs 不計入（實際花費會透過信用卡／現金記帳進來，計入會重複扣）
+  // 📋 預算型分配（房租、生活費預算…）不計入餘額：實際花費會透過信用卡／現金記帳進來，計入會重複扣
   var totalOut = ccTotal + cashTotal + totalSavings + totalInvest + totalReserve;
   var remain = income - totalOut;
 
@@ -1232,7 +1239,6 @@ function getPeriodSummary(p) {
     ccTotal: ccTotal, cashTotal: cashTotal,
     savings: totalSavings, invest: totalInvest, reserve: totalReserve,
     fixedTotal: fixedTotal,
-    otherAllocs: otherAllocs,
     remain: remain, settled: settled
   };
 }
@@ -1286,7 +1292,101 @@ document.addEventListener('DOMContentLoaded', function() {
   applyTheme(currentTheme);
 });
 
-function renderAll() { renderRecord(); renderCash(); renderOverview(); renderSettings(); }
+var showZeroAllocs = false;
+function toggleZeroAllocs() { showZeroAllocs = !showZeroAllocs; renderOverview(); }
+// ── 品項自動建議 ──────────────────────────────────────
+// 依「最近用過」優先、其次「用過幾次」排序，取前 40 筆餵給 datalist。
+// 同時記住每個品項最後一次的金額，選中時若金額欄還空著就自動帶入。
+var lastAmountByName = {};
+function refreshNameSuggestions() {
+  var all = (data.transactions||[]).concat(data.cashTransactions||[]);
+  var stat = {};
+  all.forEach(function(t){
+    var n = (t.name||'').trim();
+    if (!n) return;
+    if (!stat[n]) stat[n] = { n: n, count: 0, last: '' };
+    stat[n].count++;
+    if (t.date > stat[n].last) { stat[n].last = t.date; lastAmountByName[n] = t.amount; }
+  });
+  var list = Object.keys(stat).map(function(k){ return stat[k]; });
+  list.sort(function(a,b){
+    if (a.last !== b.last) return b.last.localeCompare(a.last);
+    return b.count - a.count;
+  });
+  var dl = document.getElementById('name-suggestions');
+  if (!dl) return;
+  dl.innerHTML = list.slice(0, 40).map(function(s){
+    return '<option value="' + esc(s.n) + '"></option>';
+  }).join('');
+}
+
+function onNameInput(nameId, amountId) {
+  var nameEl = document.getElementById(nameId);
+  var amtEl = document.getElementById(amountId);
+  if (!nameEl || !amtEl) return;
+  var v = nameEl.value.trim();
+  // 只在金額欄還是空的時候帶入，不覆蓋你已經打的數字
+  if (v && amtEl.value === '' && lastAmountByName[v] != null) {
+    amtEl.value = lastAmountByName[v];
+  }
+}
+
+// ── 跨月搜尋 ──────────────────────────────────────────
+function clearSearch() {
+  var el = document.getElementById('tx-search');
+  if (el) el.value = '';
+  renderSearch();
+}
+function renderSearch() {
+  var el = document.getElementById('tx-search');
+  var box = document.getElementById('search-results');
+  var cc = document.getElementById('section-cc');
+  var cash = document.getElementById('section-cash');
+  if (!el || !box) return;
+  var q = el.value.trim().toLowerCase();
+  var clearBtn = document.getElementById('search-clear');
+  if (clearBtn) clearBtn.style.display = q ? '' : 'none';
+
+  if (!q) { box.style.display = 'none'; box.innerHTML = ''; switchSubTab(currentSubTab); return; }
+
+  cc.style.display = 'none';
+  cash.style.display = 'none';
+  box.style.display = 'block';
+
+  var hits = [];
+  (data.transactions||[]).forEach(function(t){
+    if ((t.name||'').toLowerCase().indexOf(q) !== -1) hits.push({ t: t, kind: 'card' });
+  });
+  (data.cashTransactions||[]).forEach(function(t){
+    if ((t.name||'').toLowerCase().indexOf(q) !== -1) hits.push({ t: t, kind: 'cash' });
+  });
+  hits.sort(function(a,b){ return (b.t.date||'').localeCompare(a.t.date||''); });
+
+  if (!hits.length) {
+    box.innerHTML = '<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-text">找不到「' + esc(el.value.trim()) + '」</div></div>';
+    return;
+  }
+  var total = hits.reduce(function(s,x){ return s + (x.t.amount||0); }, 0);
+  var html = '<div class="week-block" style="margin-top:10px">';
+  html += '<div class="week-header"><div class="week-left"><div class="week-label">🔍 ' + hits.length + ' 筆</div></div><div class="week-total">$' + total.toLocaleString() + '</div></div>';
+  hits.forEach(function(x){
+    var t = x.t, isCash = x.kind === 'cash';
+    var pOf = periodOfDate(t.date);
+    html += '<div class="tx-item"><div class="tx-bank-badge" style="background:var(--kinari-l)">' + (isCash ? '💵' : '💳') + '</div>';
+    html += '<div class="tx-info"><div class="tx-name">' + esc(t.name) + '</div><div class="tx-meta">' + t.date.replace(/-/g,'/') + '　' + periodShort(pOf) + ' 期' + (isCash ? '' : '　' + esc(t.bank||'')) + '</div></div>';
+    html += '<div class="tx-amount">$' + (t.amount||0).toLocaleString() + '</div>';
+    html += '<div class="tx-actions"><button class="tx-btn" data-txid="' + t.id + '" onclick="' + (isCash ? 'openCashEditById' : 'openEditById') + '(this)">✏️</button></div></div>';
+  });
+  html += '</div>';
+  box.innerHTML = html;
+}
+
+function renderAll() {
+  renderRecord(); renderCash(); renderOverview(); renderSettings();
+  refreshNameSuggestions();
+  var sEl = document.getElementById('tx-search');
+  if (sEl && sEl.value.trim()) renderSearch();
+}
 
 // ── RECORD ───────────────────────────────────────────
 function renderRecord() {
@@ -1317,7 +1417,7 @@ function renderRecord() {
       if (!allSettled) html += '<button class="settle-btn" data-wn="' + wn + '" onclick="settleWeekById(this)">🏦 匯款到兆豐　NT$ ' + pendingTotal.toLocaleString() + '</button>';
       group.forEach(function(tx){
         html += '<div class="tx-item' + (tx.settled ? ' settled' : '') + '">';
-        var isCatTheme = usesCatIcons();
+        var isCatTheme = usesCatCards();
         var txCard = getCard(tx.bank);
         var badgeInner = (isCatTheme && txCard.catKey)
           ? '<span style=\'display:block;width:24px;height:24px;line-height:0\'>' + scaleSvg(getCatSvg(txCard.catKey)) + '</span>'
@@ -1509,13 +1609,19 @@ function renderOverview() {
   // Budget allocs by type
   html += '<div class="ov-card" style="margin-top:10px">';
   html += '<div class="ov-card-header"><div class="ov-card-title">💰 薪資分配</div></div>';
+  var zeroCount = 0;
   data.budgetAllocs.forEach(function(a){
     var amt = getAllocAmount(a.id, p);
+    if (!amt && !showZeroAllocs) { zeroCount++; return; }   // 0 元項目預設收起來
     var icon = (a.isIncome||a.allocType==='income') ? '💴' : typeIcon(a.allocType);
     var cls = (a.isIncome||a.allocType==='income') ? 'val-green' : '';
-    html += '<div class="ov-row"><div class="ov-row-name">' + icon + ' ' + a.name + '</div>';
+    html += '<div class="ov-row"><div class="ov-row-name">' + icon + ' ' + esc(a.name) + '</div>';
     html += '<div class="ov-row-val ' + cls + '">' + ((a.isIncome||a.allocType==='income')?'+':'-') + 'NT$' + amt.toLocaleString() + '</div></div>';
   });
+  if (zeroCount || showZeroAllocs) {
+    html += '<div class="ov-row" style="justify-content:center"><button onclick="toggleZeroAllocs()" style="background:none;border:none;font-family:inherit;font-size:11px;color:var(--text3);cursor:pointer;padding:4px">'
+      + (showZeroAllocs ? '收起 0 元項目' : '顯示 ' + zeroCount + ' 個 0 元項目') + '</button></div>';
+  }
   html += '</div>';
 
   // Fixed expenses (display only, labeled clearly)
@@ -1537,7 +1643,7 @@ function renderOverview() {
   (data.cards||[]).map(function(c){return c.name;}).forEach(function(b){
     var bt = data.transactions.filter(function(t){return inPeriod(t,p)&&t.bank===b;}).reduce(function(sum,t){return sum+t.amount;},0);
     if (bt) {
-      var isCatT = usesCatIcons();
+      var isCatT = usesCatCards();
       var card = getCard(b);
       var bIcon = (isCatT && card.catKey)
         ? '<span style=\'display:inline-block;width:20px;height:20px;vertical-align:middle;line-height:0\'>' + scaleSvg(getCatSvg(card.catKey)) + '</span>'
@@ -1683,7 +1789,7 @@ function renderSettings() {
   // Cards list
   var ch = '';
   (data.cards||[]).forEach(function(c){
-    var isCat = usesCatIcons();
+    var isCat = usesCatCards();
     var cardIcon = isCat && c.catKey
       ? '<span style="display:inline-block;width:28px;height:28px;vertical-align:middle;line-height:0">' + scaleSvg(getCatSvg(c.catKey)) + '</span>'
       : '<span style="font-size:20px">' + c.emoji + '</span>';
@@ -2067,41 +2173,53 @@ function renderChart() {
   var chartW = W - padL - padR;
   var chartH = H - padT - padB;
 
+  // 顏色改讀主題變數，否則切到貓咪／珊瑚／薄荷時網格與軸標籤會跟配色脫節
+  var cs = getComputedStyle(document.body);
+  function cvar(name, fb) { var v = cs.getPropertyValue(name).trim(); return v || fb; }
+  var cGrid = cvar('--border', '#DDD9CF');
+  var cLabel = cvar('--text3', '#A89F8C');
+  // 哪些月份「有資料」——沒資料的月份不能當 0 畫進線裡，否則未來月份會讓線摔到底
+  var hasData = [];
+  for (var hi = 0; hi < 12; hi++) {
+    hasData.push(!!(incomeData[hi] || savingsData[hi] || spendingData[hi]));
+  }
+
   ctx.clearRect(0, 0, W, H);
-  ctx.strokeStyle = '#DDD9CF'; ctx.lineWidth = 1;
+  ctx.strokeStyle = cGrid; ctx.lineWidth = 1;
   var gi;
   for (gi = 0; gi <= 4; gi++) {
     var gy = padT + (chartH/4)*gi;
     ctx.beginPath(); ctx.moveTo(padL, gy); ctx.lineTo(padL+chartW, gy); ctx.stroke();
     var gval = Math.round(maxVal*(1-gi/4));
-    ctx.fillStyle='#A89F8C'; ctx.font='10px -apple-system,sans-serif'; ctx.textAlign='right';
+    ctx.fillStyle=cLabel; ctx.font='10px -apple-system,sans-serif'; ctx.textAlign='right';
     ctx.fillText(gval>=10000?(gval/10000).toFixed(0)+'萬':gval.toLocaleString(), padL-4, gy+4);
   }
-  ctx.fillStyle='#A89F8C'; ctx.textAlign='center'; ctx.font='10px -apple-system,sans-serif';
+  ctx.fillStyle=cLabel; ctx.textAlign='center'; ctx.font='10px -apple-system,sans-serif';
   var xi;
   for (xi = 0; xi < 12; xi++) {
     ctx.fillText(labels[xi], padL+(xi/11)*chartW, H-6);
   }
 
   function drawLine(arr, color, dash) {
-    var di, dx, dy;
+    var di, dx, dy, started = false;
     ctx.beginPath(); ctx.strokeStyle=color; ctx.lineWidth=2.5;
     if (dash) ctx.setLineDash(dash); else ctx.setLineDash([]);
     for (di=0; di<arr.length; di++) {
+      if (!hasData[di]) { started = false; continue; }   // 還沒發生的月份：斷線，不要拉到 0
       dx = padL+(di/11)*chartW; dy = padT+chartH*(1-arr[di]/maxVal);
-      if (di===0) ctx.moveTo(dx,dy); else ctx.lineTo(dx,dy);
+      if (!started) { ctx.moveTo(dx,dy); started = true; } else ctx.lineTo(dx,dy);
     }
     ctx.stroke(); ctx.setLineDash([]);
     for (di=0; di<arr.length; di++) {
-      if (arr[di]===0) continue;
+      if (!hasData[di]) continue;
       dx=padL+(di/11)*chartW; dy=padT+chartH*(1-arr[di]/maxVal);
       ctx.beginPath(); ctx.arc(dx,dy,3.5,0,Math.PI*2);
       ctx.fillStyle=color; ctx.fill();
     }
   }
-  drawLine(incomeData,'#6A8C69',[]);
-  drawLine(savingsData,'#6B8FAB',[5,3]);
-  drawLine(spendingData,'#D9697A',[]);
+  drawLine(incomeData,  cvar('--matcha', '#6A8C69'), []);
+  drawLine(savingsData, cvar('--sora',   '#6B8FAB'), [5,3]);
+  drawLine(spendingData,cvar('--sakura', '#D9697A'), []);
 
   var listHtml = '';
   for (var mii=0; mii<12; mii++) {
@@ -2208,7 +2326,7 @@ function renderBankPills(selectedName) {
     var html = '';
     cards.forEach(function(c) {
       var isActive = c.name === selectedName;
-      var isCat = usesCatIcons();
+      var isCat = usesCatCards();
       var iconHtml = isCat && c.catKey
         ? '<span style="display:block;width:36px;height:36px;margin-bottom:2px">' + getCatSvg(c.catKey) + '</span>'
         : '<span style="display:block;font-size:16px;margin-bottom:2px">' + c.emoji + '</span>';
@@ -2270,7 +2388,7 @@ function addCard() {
   var name = document.getElementById('new-card-name').value.trim();
   if (!name) { showToast('⚠️ 請輸入卡片名稱'); return; }
   var catKeyIdx = data.cards.length % CAT_KEYS.length;
-  var newCatKey = (usesCatIcons() && selectedCatKey) ? selectedCatKey : CAT_KEYS[catKeyIdx];
+  var newCatKey = (usesCatCards() && selectedCatKey) ? selectedCatKey : CAT_KEYS[catKeyIdx];
   data.cards.push({ id: mkId(), name: name, emoji: selectedCardEmoji, color: selectedCardColor, textColor: selectedCardTextColor, catKey: newCatKey });
   save();
   document.getElementById('new-card-name').value = '';
