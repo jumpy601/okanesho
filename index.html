@@ -527,7 +527,7 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
 <body>
 
 <div class="toast" id="toast"></div>
-<div id="auth-bar" style="position:fixed;top:0;left:0;right:0;z-index:200;transform:translateZ(0);display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:0.4px;color:var(--text3);flex:0 0 auto">v4.1 固定列還原</span><div id="auth-bar-inner" style="display:flex;align-items:center;gap:8px"><button onclick="showLoginModal()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text2)"><span>☁️</span>信箱登入同步</button></div></div>
+<div id="auth-bar" style="position:fixed;top:0;left:0;right:0;z-index:200;transform:translateZ(0);display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:0.4px;color:var(--text3);flex:0 0 auto">v4.4 中性起始組</span><div id="auth-bar-inner" style="display:flex;align-items:center;gap:8px"><button onclick="showLoginModal()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text2)"><span>☁️</span>信箱登入同步</button></div></div>
 <div id="sync-status" style="position:fixed;top:34px;right:12px;z-index:199;font-size:11px;color:var(--text3);font-weight:600"></div>
 
 <!-- ══ PAGE: 記帳 ══ -->
@@ -915,6 +915,15 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
 <!-- ══ EDIT MODAL ══ -->
 <datalist id="name-suggestions"></datalist>
 
+<div class="modal-overlay" id="confirm-sheet">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="confirm-title"></div>
+    <div id="confirm-msg" style="font-size:13px;color:var(--text2);line-height:1.75;margin-bottom:4px"></div>
+    <div id="confirm-actions" style="display:flex;flex-direction:column;gap:8px;margin-top:14px"></div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="edit-modal">
   <div class="modal">
     <div class="modal-handle"></div>
@@ -998,34 +1007,26 @@ var data = {
   extraIncomes: [],
   monthlyOverrides: {},
   cards: [
-    { id: 1, name: '台新', emoji: '🌸', color: 'var(--sakura-l)', textColor: 'var(--taishin)', catKey: 'cat1' },
-    { id: 2, name: '星展', emoji: '🌊', color: 'var(--sora-l)', textColor: 'var(--stanChart)', catKey: 'fox' },
-    { id: 3, name: '聯邦', emoji: '🍃', color: 'var(--matcha-l)', textColor: 'var(--lianBang)', catKey: 'redcat' }
+    { id: 1, name: '信用卡', emoji: '🌸', color: 'var(--sakura-l)', textColor: 'var(--taishin)', catKey: 'cat1' }
   ],
   fixedExpenses: [
-    { id: 1, name: '水電費', amount: 1200, included: true, note: '' },
-    { id: 2, name: '電信費', amount: 600, included: true, note: '' },
-    { id: 3, name: 'iCloud', amount: 90, included: true, note: '' },
-    { id: 4, name: '做身體', amount: 0, included: true, note: '' },
-    { id: 5, name: '剪頭髮', amount: 0, included: true, note: '' },
-    { id: 6, name: '投信訂閱', amount: 0, included: true, note: '' },
-    { id: 7, name: 'Netflix', amount: 0, included: true, note: '' },
-    { id: 8, name: 'AI訂閱', amount: 0, included: true, note: '' },
-    { id: 9, name: '捐款（野灣）', amount: 0, included: true, note: '' },
-    { id: 10, name: '共同錢包', amount: 0, included: true, note: '' }
+    { id: 1, name: '水電費', amount: 0, included: true, note: '' },
+    { id: 2, name: '電信費', amount: 0, included: true, note: '' },
+    { id: 3, name: '網路費', amount: 0, included: true, note: '' },
+    { id: 4, name: '訂閱服務', amount: 0, included: true, note: '' },
+    { id: 5, name: '保險費', amount: 0, included: true, note: '' }
   ],
   cycleStartDay: 25,
   settleBank: '兆豐',
   settleEnabled: true,
+  // 起始組刻意四種分類各放一項，一打開就看得懂每個 icon 代表什麼
   budgetAllocs: [
     { id: 1, name: '薪水', amount: 0, isIncome: true },
-    { id: 2, name: '房租', amount: 12500, allocType: 'other' },
-    { id: 3, name: '存錢 元大定期定額', amount: 0, allocType: 'saving' },
-    { id: 4, name: '換匯-日幣', amount: 0, allocType: 'other' },
-    { id: 5, name: '生活費預算', amount: 30000, allocType: 'other' },
-    { id: 6, name: '活存', amount: 0, allocType: 'saving' },
-    { id: 7, name: '旅行基金 台新子帳戶', amount: 0, allocType: 'reserve' },
-    { id: 8, name: '醫療/健檢 台新子帳戶', amount: 0, allocType: 'reserve' }
+    { id: 2, name: '房租', amount: 0, allocType: 'other' },
+    { id: 3, name: '生活費預算', amount: 0, allocType: 'other' },
+    { id: 4, name: '儲蓄', amount: 0, allocType: 'saving' },
+    { id: 5, name: '定期定額', amount: 0, allocType: 'invest' },
+    { id: 6, name: '緊急預備金', amount: 0, allocType: 'reserve' }
   ]
 };
 
@@ -1045,11 +1046,10 @@ function normalizeData() {
   if (!Array.isArray(data.fixedExpenses)) data.fixedExpenses = [];
   if (!Array.isArray(data.budgetAllocs)) data.budgetAllocs = [];
   if (!data.monthlyOverrides || typeof data.monthlyOverrides !== 'object') data.monthlyOverrides = {};
-  if (!Array.isArray(data.cards) || data.cards.length === 0) data.cards = [
-    { id: 1, name: '台新', emoji: '🌸', color: 'var(--sakura-l)', textColor: 'var(--taishin)', catKey: 'cat1' },
-    { id: 2, name: '星展', emoji: '🌊', color: 'var(--sora-l)', textColor: 'var(--stanChart)', catKey: 'fox' },
-    { id: 3, name: '聯邦', emoji: '🍃', color: 'var(--matcha-l)', textColor: 'var(--lianBang)', catKey: 'redcat' }
-  ];
+  // 引用出廠預設，不要在這裡再抄一份（抄兩份就一定有一天只改到一份）
+  if (!Array.isArray(data.cards) || data.cards.length === 0) {
+    data.cards = JSON.parse(JSON.stringify(DEFAULT_DATA.cards));
+  }
   data.cards.forEach(function(c, i){ if (!c.catKey) c.catKey = CAT_KEYS[i % CAT_KEYS.length]; });
   data.fixedExpenses.forEach(function(e){
     if (e.included === undefined) e.included = true;
@@ -2289,7 +2289,7 @@ function renderChart() {
     }
   }
   drawLine(incomeData,  cvar('--matcha', '#6A8C69'), []);
-  drawLine(savingsData, cvar('--sora',   '#6B8FAB'), [5,3]);
+  drawLine(savingsData, cvar('--stanChart', '#6B8FAB'), [5,3]);
   drawLine(spendingData,cvar('--sakura', '#D9697A'), []);
 
   var listHtml = '';
@@ -2581,7 +2581,74 @@ function doLogin() {
       }
     });
 }
-function signOut() { auth.signOut(); showToast('已登出'); }
+// 確認底板：iOS PWA 會擋掉原生 confirm()，一律用自己的
+var _confirmActions = [];
+function showConfirmSheet(title, msg, actions) {
+  _confirmActions = actions;
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-msg').innerHTML = msg;
+  document.getElementById('confirm-actions').innerHTML = actions.map(function(a, i){
+    var cls = a.style === 'danger' ? 'btn-confirm' : 'btn-cancel';
+    var extra = a.style === 'danger' ? 'background:var(--sakura)' : '';
+    return '<button class="' + cls + '" style="width:100%;' + extra + '" onclick="runConfirmAction(' + i + ')">' + a.label + '</button>';
+  }).join('');
+  document.getElementById('confirm-sheet').classList.add('open');
+}
+function closeConfirmSheet() { document.getElementById('confirm-sheet').classList.remove('open'); }
+function runConfirmAction(i) {
+  closeConfirmSheet();
+  var a = _confirmActions[i];
+  if (a && typeof a.run === 'function') a.run();
+}
+
+// 把本機資料歸零（雲端不動）
+function wipeLocal() {
+  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(LAST_UID_KEY);
+  data = JSON.parse(JSON.stringify(DEFAULT_DATA));
+  normalizeData();
+  renderBankPills();
+  renderAll();
+}
+
+function signOut() {
+  if (!currentUser) { auth.signOut(); return; }
+  showConfirmSheet('☁️ 登出', 
+    '登出前會先把還沒送出的變更推上雲端。<br><br>'
+    + '<b>清除本機資料</b>：這台裝置上不會留下任何數字，下次登入會從雲端重新下載。共用裝置建議選這個。<br><br>'
+    + '<b>保留本機資料</b>：只是停止同步，數字仍會顯示在這台裝置上。',
+    [
+      { label: '登出並清除本機資料', style: 'danger', run: function(){ doSignOut(true); } },
+      { label: '只登出，保留本機資料', run: function(){ doSignOut(false); } },
+      { label: '取消', run: function(){} }
+    ]);
+}
+
+function doSignOut(wipe) {
+  // 關鍵：登出前先把 1.5 秒 debounce 裡還沒送出的變更推完。
+  // 否則 currentUser 一被清掉，pushToFirebase 會直接 return，
+  // 那些變更永遠上不了雲端，下次登入又被雲端舊版蓋掉 = 靜默掉資料。
+  var pending = null;
+  if (syncTimeout) { clearTimeout(syncTimeout); syncTimeout = null; }
+  if (currentUser) {
+    pending = db.collection('users').doc(currentUser.uid).set({
+      data: JSON.stringify(data),
+      theme: currentTheme,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  }
+  function finish(ok) {
+    auth.signOut();
+    if (wipe) wipeLocal();
+    showToast(ok ? (wipe ? '已登出，本機資料已清除' : '已登出') : '⚠️ 最後一次同步失敗，本機資料保留');
+  }
+  if (pending) {
+    pending.then(function(){ finish(true); })
+           .catch(function(){ finish(false); });   // 同步失敗就不清本機，避免資料兩邊都沒了
+  } else {
+    finish(true);
+  }
+}
 
 function pushToFirebase() {
   if (!currentUser) return;
