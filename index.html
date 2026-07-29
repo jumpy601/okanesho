@@ -527,7 +527,7 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
 <body>
 
 <div class="toast" id="toast"></div>
-<div id="auth-bar" style="position:fixed;top:0;left:0;right:0;z-index:200;transform:translateZ(0);display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:0.4px;color:var(--text3);flex:0 0 auto">v4.0 共用調整</span><div id="auth-bar-inner" style="display:flex;align-items:center;gap:8px"><button onclick="showLoginModal()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text2)"><span>☁️</span>信箱登入同步</button></div></div>
+<div id="auth-bar" style="position:fixed;top:0;left:0;right:0;z-index:200;transform:translateZ(0);display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:0.4px;color:var(--text3);flex:0 0 auto">v4.1 固定列還原</span><div id="auth-bar-inner" style="display:flex;align-items:center;gap:8px"><button onclick="showLoginModal()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text2)"><span>☁️</span>信箱登入同步</button></div></div>
 <div id="sync-status" style="position:fixed;top:34px;right:12px;z-index:199;font-size:11px;color:var(--text3);font-weight:600"></div>
 
 <!-- ══ PAGE: 記帳 ══ -->
@@ -2637,32 +2637,15 @@ var VP = (function () {
     };
   }
 
+  // 只做一件事：把可能殘留的行內樣式清乾淨。
+  // 絕不主動隱藏或搬移固定列——v3.6 曾經在這裡設 visibility:hidden，
+  // 結果 iOS 沒補送 resize 事件時那條列會永久消失，比原本的跑位更糟。
+  // 真正的成因是橡皮筋回彈，已由 overscroll-behavior + translateZ(0) 處理。
   function sync() {
     var bar = document.querySelector('.tab-bar');
     var auth = document.getElementById('auth-bar');
-    if (!vv) return;
-    // 看得到的視窗，在 layout viewport 座標系中的上下緣
-    var visTop = vv.offsetTop;
-    var visBottom = vv.offsetTop + vv.height;
-    var drift = Math.abs(visTop) + Math.abs(window.innerHeight - visBottom);
-
-    if (drift < 24) {
-      // 沒有偏移：交還給原本的 CSS，避免正常情況被我們搞壞
-      if (bar) { bar.style.top = ''; bar.style.bottom = ''; bar.style.visibility = ''; }
-      if (auth) { auth.style.top = ''; }
-      return;
-    }
-    if (auth) auth.style.top = visTop + 'px';
-    if (bar) {
-      var covered = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-      if (covered > 200) {           // 鍵盤明顯開著：收起來，本來就被擋住
-        bar.style.visibility = 'hidden';
-      } else {
-        bar.style.visibility = '';
-        bar.style.top = (visBottom - bar.offsetHeight) + 'px';
-        bar.style.bottom = 'auto';
-      }
-    }
+    if (bar) { bar.style.visibility = ''; bar.style.top = ''; bar.style.bottom = ''; }
+    if (auth) { auth.style.visibility = ''; auth.style.top = ''; }
   }
 
   function nudge() { sync(); window.scrollBy(0, 1); window.scrollBy(0, -1); }
@@ -2674,6 +2657,8 @@ var VP = (function () {
   document.addEventListener('focusout', function () { setTimeout(nudge, 100); });
   window.addEventListener('orientationchange', function () { setTimeout(nudge, 300); });
   document.addEventListener('DOMContentLoaded', sync);
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') sync(); });
+  window.addEventListener('pageshow', sync);
 
   return { sync: sync, nudge: nudge, measure: measure };
 })();
