@@ -96,7 +96,7 @@ body {
 /* ── HEADER ── */
 .page-header {
   background: var(--surface);
-  padding: 68px 20px 14px;
+  padding: calc(var(--authbar-h, 44px) + 12px) 20px 14px;
   border-bottom: 1.5px solid var(--border);
   position: sticky; top: 0; z-index: 50;
 }
@@ -451,10 +451,6 @@ body.theme-cat {
   --stanChart:    #C8601A;
   --lianBang:     #D49020;
 }
-body.theme-cat .stamp { border-color: #D4782A; color: #D4782A; }
-body.theme-cat .stamp::after { content: 'NEKO'; }
-body.theme-cat .stamp { font-size: 0; }
-body.theme-cat .stamp::after { font-size: 9px; }
 body.theme-cat .washi {
   background: repeating-linear-gradient(90deg,
     #FFCE90 0px, #FFCE90 10px, #FFF0DC 10px, #FFF0DC 18px,
@@ -464,8 +460,8 @@ body.theme-cat .washi {
 }
 body.theme-cat .tab-btn.active { color: #D4782A; }
 body.theme-cat{--hero-c1:#C8651A;--hero-c2:#E08838;--hero-c3:#F0AA5E;--hero-emoji:'🐱'}
-body.theme-cat .empty-icon { font-size: 0; }
-body.theme-cat .page-header h1 .emoji { font-size: 0; }
+/* 註:貓咪主題原本把這兩個圖示藏起來(font-size:0),但並沒有提供替代的
+   SVG,結果是標題旁邊空一塊、空狀態沒有圖。四個主題一律正常顯示。 */
 body.theme-cat #theme-toggle-label-jp { display: none; }
 body.theme-cat #theme-toggle-label-cat { display: inline; }
 /* 卡片樣式選擇器：四個主題一律用貓咪，emoji 那組已停用 */
@@ -527,7 +523,7 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
 <body>
 
 <div class="toast" id="toast"></div>
-<div id="auth-bar" style="position:fixed;top:0;left:0;right:0;z-index:200;transform:translateZ(0);display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:0.4px;color:var(--text3);flex:0 0 auto">v4.5 結算收斂</span><div id="auth-bar-inner" style="display:flex;align-items:center;gap:8px"><button onclick="showLoginModal()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text2)"><span>☁️</span>信箱登入同步</button></div></div>
+<div id="auth-bar" style="position:fixed;top:0;left:0;right:0;z-index:200;transform:translateZ(0);display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:0.4px;color:var(--text3);flex:0 0 auto">v4.6 版面微調</span><div id="auth-bar-inner" style="display:flex;align-items:center;gap:8px"><button onclick="showLoginModal()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text2)"><span>☁️</span>信箱登入同步</button></div></div>
 <div id="sync-status" style="position:fixed;top:34px;right:12px;z-index:199;font-size:11px;color:var(--text3);font-weight:600"></div>
 
 <!-- ══ PAGE: 記帳 ══ -->
@@ -2526,6 +2522,7 @@ var currentUser = null;
 var syncTimeout = null;
 
 function updateAuthBar(user) {
+  setTimeout(function(){ if (window.VP) VP.syncAuthBarHeight(); }, 0);
   var bar = document.getElementById('auth-bar-inner');
   if (!bar) { setTimeout(function(){ updateAuthBar(user); }, 100); return; }
   if (user) {
@@ -2720,6 +2717,15 @@ var VP = (function () {
     if (auth) { auth.style.visibility = ''; auth.style.top = ''; }
   }
 
+  // 標題的上方留白必須剛好避開固定登入列。原本寫死 68px(留了 24px 空隙,
+  // 偏多),而且登入列若因為長帳號名換行就會被蓋住。改成量實際高度。
+  function syncAuthBarHeight() {
+    var ab = document.getElementById('auth-bar');
+    if (ab && ab.offsetHeight) {
+      document.documentElement.style.setProperty('--authbar-h', ab.offsetHeight + 'px');
+    }
+  }
+
   function nudge() { sync(); window.scrollBy(0, 1); window.scrollBy(0, -1); }
 
   if (vv) {
@@ -2728,11 +2734,12 @@ var VP = (function () {
   }
   document.addEventListener('focusout', function () { setTimeout(nudge, 100); });
   window.addEventListener('orientationchange', function () { setTimeout(nudge, 300); });
-  document.addEventListener('DOMContentLoaded', sync);
+  document.addEventListener('DOMContentLoaded', function(){ sync(); syncAuthBarHeight(); });
+  window.addEventListener('resize', syncAuthBarHeight);
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') sync(); });
   window.addEventListener('pageshow', sync);
 
-  return { sync: sync, nudge: nudge, measure: measure };
+  return { sync: sync, nudge: nudge, measure: measure, syncAuthBarHeight: syncAuthBarHeight };
 })();
 
 // 版面診斷面板（iPhone 沒有 F12，只能自己內建）
