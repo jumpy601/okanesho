@@ -527,7 +527,7 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
 <body>
 
 <div class="toast" id="toast"></div>
-<div id="auth-bar" style="position:fixed;top:0;left:0;right:0;z-index:200;transform:translateZ(0);display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:0.4px;color:var(--text3);flex:0 0 auto">v3.9 收尾與體驗</span><div id="auth-bar-inner" style="display:flex;align-items:center;gap:8px"><button onclick="showLoginModal()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text2)"><span>☁️</span>信箱登入同步</button></div></div>
+<div id="auth-bar" style="position:fixed;top:0;left:0;right:0;z-index:200;transform:translateZ(0);display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:0.4px;color:var(--text3);flex:0 0 auto">v4.0 共用調整</span><div id="auth-bar-inner" style="display:flex;align-items:center;gap:8px"><button onclick="showLoginModal()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text2)"><span>☁️</span>信箱登入同步</button></div></div>
 <div id="sync-status" style="position:fixed;top:34px;right:12px;z-index:199;font-size:11px;color:var(--text3);font-weight:600"></div>
 
 <!-- ══ PAGE: 記帳 ══ -->
@@ -660,6 +660,20 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
         </div>
         <div id="cycle-preview" style="font-size:11px;color:var(--text3);margin-top:10px;line-height:1.7"></div>
       </div>
+      <div class="set-row">
+        <div class="set-row-top">
+          <div class="set-name">🏦 信用卡結算</div>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer">
+            <span>使用</span>
+            <input type="checkbox" id="settle-enabled" onchange="handleSettleEnabled(this)" style="width:18px;height:18px;accent-color:var(--matcha)">
+          </label>
+        </div>
+        <div class="set-row-bottom">
+          <input type="text" id="settle-bank" placeholder="匯款銀行（例：兆豐）" onchange="handleSettleBank(this)"
+            style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;background:var(--bg);color:var(--text)">
+        </div>
+        <div id="settle-hint" style="font-size:11px;color:var(--text3);margin-top:8px;line-height:1.7"></div>
+      </div>
     </div>
   </div>
   <div style="display:flex;gap:0;margin:12px 16px 0;border:1.5px solid var(--border);border-radius:9px;overflow:hidden;background:var(--bg2)">
@@ -706,11 +720,7 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
       <div style="padding:10px;background:var(--bg2);border-radius:10px;margin-top:8px">
         <input type="text" id="new-alloc-month-name" placeholder="項目名稱（例：旅行基金）" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;background:var(--bg);box-sizing:border-box;margin-bottom:8px">
         <div style="display:flex;gap:6px">
-          <select id="new-alloc-month-type" style="flex:1;padding:8px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg)">
-            <option value="saving">🏦 存款</option>
-            <option value="reserve">💾 預存</option>
-            <option value="other">💸 支出</option>
-          </select>
+          <select id="new-alloc-month-type" style="flex:1;padding:8px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg)"></select>
           <input type="number" id="new-alloc-month-amount" placeholder="金額" class="w-amt" inputmode="decimal" style="width:100px">
           <button class="btn-sm" onclick="addMonthAlloc()">新增</button>
         </div>
@@ -773,7 +783,7 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
     </div>
   </div>
 
-  <div class="section-label">📌 固定支出</div>
+  <div class="section-label">📌 固定預算</div>
   <div class="set-card">
     <div id="fixed-expense-list"></div>
     <div class="add-row">
@@ -1005,6 +1015,8 @@ var data = {
     { id: 10, name: '共同錢包', amount: 0, included: true, note: '' }
   ],
   cycleStartDay: 25,
+  settleBank: '兆豐',
+  settleEnabled: true,
   budgetAllocs: [
     { id: 1, name: '薪水', amount: 0, isIncome: true },
     { id: 2, name: '房租', amount: 12500, allocType: 'other' },
@@ -1025,6 +1037,8 @@ function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
 function normalizeData() {
   var cd = parseInt(data.cycleStartDay, 10);
   data.cycleStartDay = (cd && cd >= 1 && cd <= 31) ? cd : 25;
+  if (typeof data.settleBank !== 'string') data.settleBank = '';
+  if (typeof data.settleEnabled !== 'boolean') data.settleEnabled = true;
   if (!Array.isArray(data.transactions)) data.transactions = [];
   if (!Array.isArray(data.cashTransactions)) data.cashTransactions = [];
   if (!Array.isArray(data.extraIncomes)) data.extraIncomes = [];
@@ -1088,6 +1102,10 @@ var settingsMonthOffset = 0;
 // ── 帳務週期：唯一的真實來源 ─────────────────────────
 // 每個帳號各自獨立（存在 data 裡，跟著該 uid 的雲端文件走）。
 // 姊姊的帳號設 5，你的設 25，兩邊互不影響。
+// 信用卡結算：每個帳號自己決定要不要用、匯到哪一家
+function settleBankName() { return (data.settleBank || '').trim() || '兆豐'; }
+function settleEnabled() { return data.settleEnabled !== false; }
+
 function cycleDay() {
   var d = parseInt(data.cycleStartDay, 10);
   if (!d || d < 1 || d > 31) d = 25;
@@ -1411,10 +1429,10 @@ function renderRecord() {
       var pendingTotal = group.filter(function(tx){return !tx.settled;}).reduce(function(s,tx){return s+tx.amount;},0);
       html += '<div class="week-block">';
       html += '<div class="week-header"><div class="week-left"><div class="week-label">🗓 ' + weekLabel(parseInt(wn), p) + '</div>';
-      if (allSettled) html += '<span class="week-badge badge-settled">✅ 已匯兆豐</span>';
+      if (allSettled && settleEnabled()) html += '<span class="week-badge badge-settled">✅ 已匯' + esc(settleBankName()) + '</span>';
       else if (pendingTotal > 0) html += '<span class="week-badge badge-pending">🏦 待匯 $' + pendingTotal.toLocaleString() + '</span>';
       html += '</div><div class="week-total">$' + total.toLocaleString() + '</div></div>';
-      if (!allSettled) html += '<button class="settle-btn" data-wn="' + wn + '" onclick="settleWeekById(this)">🏦 匯款到兆豐　NT$ ' + pendingTotal.toLocaleString() + '</button>';
+      if (!allSettled && settleEnabled()) html += '<button class="settle-btn" data-wn="' + wn + '" onclick="settleWeekById(this)">🏦 匯款到' + esc(settleBankName()) + '\u3000NT$ ' + pendingTotal.toLocaleString() + '</button>';
       group.forEach(function(tx){
         html += '<div class="tx-item' + (tx.settled ? ' settled' : '') + '">';
         var isCatTheme = usesCatCards();
@@ -1464,7 +1482,7 @@ function settleWeek(wn) {
   data.transactions.forEach(function(tx){
     if (inPeriod(tx,p) && getWeekNum(tx.date,p)===parseInt(wn) && !tx.settled) tx.settled = true;
   });
-  save(); renderAll(); showToast('🏦 第'+wn+'週已匯款到兆豐');
+  save(); renderAll(); showToast('🏦 第'+wn+'週已匯款到'+settleBankName());
 }
 function settleWeekById(el) { settleWeek(el.getAttribute('data-wn')); }
 // 'card' = 信用卡，'cash' = 現金。共用同一個 modal，只切換標題與信用卡欄位的顯示，
@@ -1570,8 +1588,8 @@ function renderOverview() {
   // Row 1: income / cc / cash
   html += '<div class="hero-cols" style="margin-top:14px">';
   html += '<div class="hero-col"><div class="hero-col-label">💴 收入</div><div class="hero-col-val">$' + s.income.toLocaleString() + '</div></div>';
-  html += '<div class="hero-col"><div class="hero-col-label">💳 信用卡</div><div class="hero-col-val">$' + s.ccTotal.toLocaleString() + '</div></div>';
-  html += '<div class="hero-col"><div class="hero-col-label">💵 現金</div><div class="hero-col-val">$' + s.cashTotal.toLocaleString() + '</div></div>';
+  html += '<div class="hero-col"><div class="hero-col-label">💳 信用卡支出</div><div class="hero-col-val">$' + s.ccTotal.toLocaleString() + '</div></div>';
+  html += '<div class="hero-col"><div class="hero-col-label">💵 現金支出</div><div class="hero-col-val">$' + s.cashTotal.toLocaleString() + '</div></div>';
   html += '</div>';
   // Row 2: 存款 / 投資 / 預存（icon 與設定頁的分類按鈕一致）
   html += '<div class="hero-cols" style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.15)">';
@@ -1581,7 +1599,7 @@ function renderOverview() {
   html += '</div>';
   // Row 3: 固定支出（參考值，不列入本期餘額）
   html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.15);display:flex;justify-content:space-between;align-items:center;opacity:0.75">';
-  html += '<div style="font-size:12px">📌 固定支出<span style="font-size:10px;opacity:0.8">（參考，未列入餘額）</span></div>';
+  html += '<div style="font-size:12px">📌 固定預算<span style="font-size:10px;opacity:0.8">（參考，未列入餘額）</span></div>';
   html += '<div style="font-size:14px;font-weight:700">$' + s.fixedTotal.toLocaleString() + '</div>';
   html += '</div>';
   html += '</div>';
@@ -1628,7 +1646,7 @@ function renderOverview() {
   var fixedItems = getFixedExpensesForPeriod(p).filter(function(e){return e.amount && e.included!==false;});
   if (fixedItems.length) {
     html += '<div class="ov-card" style="margin-top:10px">';
-    html += '<div class="ov-card-header"><div class="ov-card-title">📌 固定支出 <span style="font-size:10px;color:var(--text3);font-weight:400">（僅供參考）</span></div><div class="ov-card-total">$' + s.fixedTotal.toLocaleString() + '</div></div>';
+    html += '<div class="ov-card-header"><div class="ov-card-title">📌 固定預算 <span style="font-size:10px;color:var(--text3);font-weight:400">（僅供參考）</span></div><div class="ov-card-total">$' + s.fixedTotal.toLocaleString() + '</div></div>';
     fixedItems.forEach(function(e){
       html += '<div class="ov-row"><div class="ov-row-name">' + e.name + '</div><div class="ov-row-val" style="color:var(--text3)">$' + e.amount.toLocaleString() + '</div></div>';
     });
@@ -1638,8 +1656,10 @@ function renderOverview() {
   // CC breakdown
   html += '<div class="ov-card" style="margin-top:10px;margin-bottom:12px">';
   html += '<div class="ov-card-header"><div class="ov-card-title">💳 信用卡支出</div><div class="ov-card-total">$' + s.ccTotal.toLocaleString() + '</div></div>';
-  html += '<div class="ov-row"><div class="ov-row-name">✅ 已匯兆豐</div><div class="ov-row-val val-green">$' + s.settled.toLocaleString() + '</div></div>';
-  html += '<div class="ov-row"><div class="ov-row-name">🕐 待匯</div><div class="ov-row-val val-gold">$' + (s.ccTotal-s.settled).toLocaleString() + '</div></div>';
+  if (settleEnabled()) {
+    html += '<div class="ov-row"><div class="ov-row-name">✅ 已匯' + esc(settleBankName()) + '</div><div class="ov-row-val val-green">$' + s.settled.toLocaleString() + '</div></div>';
+    html += '<div class="ov-row"><div class="ov-row-name">🕐 待匯</div><div class="ov-row-val val-gold">$' + (s.ccTotal-s.settled).toLocaleString() + '</div></div>';
+  }
   (data.cards||[]).map(function(c){return c.name;}).forEach(function(b){
     var bt = data.transactions.filter(function(t){return inPeriod(t,p)&&t.bank===b;}).reduce(function(sum,t){return sum+t.amount;},0);
     if (bt) {
@@ -1698,6 +1718,7 @@ function changeSettingsMonth(delta) {
 function renderSettings() {
   var p = getSettingsPeriod();
   renderCycleSetting();
+  renderMonthAllocTypeOptions();
   var extraSection = document.getElementById('extra-income-section');
   if (extraSection) extraSection.style.display = (currentSettingsTab === 'month') ? 'block' : 'none';
   setTimeout(updateDefaultRemainLabel, 50);
@@ -1767,6 +1788,7 @@ function renderSettings() {
     hm += '<div class="set-row-bottom">';
     hm += '<input class="set-input" type="number" inputmode="decimal" value="' + val + '" data-aid="' + a.id + '" onchange="handleAllocInput(this)" style="' + (hasOverride?'border-color:var(--kinari)':'') + '">';
     hm += '<button class="icon-btn" style="background:var(--bg2);font-size:11px" data-aid="' + a.id + '" onclick="resetOneOverride(this)" title="重設為預設值">↩</button>';
+    hm += '<button class="icon-btn del" data-aid="' + a.id + '" onclick="removeAllocById(this)" title="刪除項目">🗑</button>';
     hm += '</div></div>';
   });
   var allocEl = document.getElementById('budget-alloc-list');
@@ -1825,6 +1847,16 @@ function renderSettings() {
 
 
 
+function renderMonthAllocTypeOptions() {
+  var sel = document.getElementById('new-alloc-month-type');
+  if (!sel) return;
+  var cur = sel.value;
+  sel.innerHTML = ALLOC_TYPES.map(function(t){
+    return '<option value="' + t.key + '">' + t.icon + ' ' + t.label + '</option>';
+  }).join('');
+  if (cur) sel.value = cur;
+}
+
 function renderCycleSetting() {
   var sel = document.getElementById('cycle-start-day');
   if (!sel) return;
@@ -1834,6 +1866,22 @@ function renderCycleSetting() {
     opts += '<option value="' + d + '"' + (d === cur ? ' selected' : '') + '>' + d + '</option>';
   }
   sel.innerHTML = opts;
+
+  // 結算銀行設定
+  var sen = document.getElementById('settle-enabled');
+  var sbk = document.getElementById('settle-bank');
+  var shint = document.getElementById('settle-hint');
+  if (sen) sen.checked = settleEnabled();
+  if (sbk) {
+    sbk.value = data.settleBank || '';
+    sbk.disabled = !settleEnabled();
+    sbk.style.opacity = settleEnabled() ? '' : '0.45';
+  }
+  if (shint) {
+    shint.innerHTML = settleEnabled()
+      ? '記帳頁每一週會出現「匯款到 <b>' + esc(settleBankName()) + '</b>」按鈕，用來標記該週卡費已轉出。'
+      : '已關閉。記帳頁不會出現匯款按鈕，月總覽也不顯示「已匯／待匯」。適合不需要另外轉帳付卡費的人。';
+  }
 
   var pv = document.getElementById('cycle-preview');
   if (!pv) return;
@@ -1846,6 +1894,17 @@ function renderCycleSetting() {
   }
   txt += '<br><span style="opacity:0.85">改變起始日只是重新分組，不會刪除任何一筆帳；改回去就會恢復原狀。</span>';
   pv.innerHTML = txt;
+}
+
+function handleSettleEnabled(el) {
+  data.settleEnabled = !!el.checked;
+  save(); renderAll();
+  showToast(el.checked ? '🏦 已開啟信用卡結算' : '已關閉信用卡結算');
+}
+function handleSettleBank(el) {
+  data.settleBank = el.value.trim();
+  save(); renderAll();
+  showToast('🏦 結算銀行已設為 ' + settleBankName());
 }
 
 function handleCycleDayChange(el) {
@@ -1993,8 +2052,20 @@ function removeFixedById(el) {
 }
 function removeAllocById(el) {
   var aid = el.getAttribute('data-aid');
-  data.budgetAllocs = data.budgetAllocs.filter(function(x){return x.id!=aid;});
+  var target = data.budgetAllocs.find(function(x){ return x.id==aid; });
+  var nm = target ? target.name : '項目';
+  data.budgetAllocs = data.budgetAllocs.filter(function(x){ return x.id!=aid; });
+  // 清掉每個月殘留的覆蓋值，否則刪了項目、覆蓋值仍永久留在 monthlyOverrides 裡
+  var months = 0;
+  Object.keys(data.monthlyOverrides || {}).forEach(function(k){
+    if (data.monthlyOverrides[k] && data.monthlyOverrides[k][aid] !== undefined) {
+      delete data.monthlyOverrides[k][aid];
+      months++;
+    }
+  });
   save(); renderSettings(); renderOverview();
+  // 分配項目是跨月共用的，從「當月調整」刪也會整個消失，講清楚免得誤會
+  showToast('🗑 已刪除「' + nm + '」' + (months ? '（含 ' + months + ' 個月的調整值）' : '') + '，所有月份都不再顯示');
 }
 function addFixedExpense() {
   var name = document.getElementById('new-expense-name').value.trim();
