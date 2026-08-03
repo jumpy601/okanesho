@@ -17,6 +17,11 @@
 <style>
 html { overscroll-behavior-y: none; }
 :root {
+  /* 年圖三線專用色。語意固定 → 收入=綠、存款投資=藍、支出=暖紅；
+     切主題只換色調不換語意。色相刻意拉開 90° 以上，飽和度壓低以免刺眼。 */
+  --chart-income: #C89020;   /* 山吹（金黃）*/
+  --chart-save:   #3E6E96;   /* 藍鼠 */
+  --chart-spend:  #96354C;   /* 蘇芳（深緋）*/
   --bg:        #F5F3EE;
   --bg2:       #EDEAE3;
   --surface:   #FDFCF9;
@@ -471,6 +476,7 @@ body.theme-cat #theme-toggle-label-cat { display: inline; }
 
 /* ══ 貓咪主題 ══ */
 body.theme-cat {
+  --chart-income:#C08A1C; --chart-save:#4A6E96; --chart-spend:#9A3644;
   --bg:#FDF8EF;--bg2:#F5EDD8;--surface:#FFFFFF;--surface2:#FFF3DC;
   --border:#E8D5B0;--text:#3A2E1E;--text2:#6B5030;--text3:#A88A60;
   --matcha:#D4782A;--matcha-l:#FFF0DC;--matcha-m:#F0C080;
@@ -486,6 +492,7 @@ body.theme-cat{--hero-c1:#C8651A;--hero-c2:#E08838;--hero-c3:#F0AA5E;--hero-emoj
 
 /* ══ 珊瑚礁主題 ══ */
 body.theme-coral {
+  --chart-income:#C99420; --chart-save:#3A6BA5; --chart-spend:#A83A55;
   --bg:#F0F8FF;--bg2:#E0F2FF;--surface:#FFFFFF;--surface2:#E8F6FF;
   --border:#C5E8F5;--text:#0A4A6E;--text2:#2A6A90;--text3:#5AA8C8;
   --matcha:#E8734A;--matcha-l:#FFF0E8;--matcha-m:#F5B090;
@@ -501,6 +508,7 @@ body.theme-coral{--hero-c1:#1A7A9A;--hero-c2:#3A9FBF;--hero-c3:#6AC0DF;--hero-em
 
 /* ══ 薄荷海主題 ══ */
 body.theme-mint {
+  --chart-income:#C08F1E; --chart-save:#3C6FA8; --chart-spend:#95364E;
   --bg:#F0FAFA;--bg2:#E0F5F2;--surface:#FFFFFF;--surface2:#E8FAF8;
   --border:#B5E8E0;--text:#0A4A42;--text2:#1A7A6A;--text3:#4AA898;
   --matcha:#1A8A7A;--matcha-l:#E0FAF5;--matcha-m:#78C8BC;
@@ -523,7 +531,7 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
 <body>
 
 <div class="toast" id="toast"></div>
-<div id="auth-bar" style="position:fixed;top:0;left:0;right:0;z-index:200;transform:translateZ(0);display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:0.4px;color:var(--text3);flex:0 0 auto">v4.7 帳本名稱</span><div id="auth-bar-inner" style="display:flex;align-items:center;gap:8px"><button onclick="showLoginModal()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text2)"><span>☁️</span>信箱登入同步</button></div></div>
+<div id="auth-bar" style="position:fixed;top:0;left:0;right:0;z-index:200;transform:translateZ(0);display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:0.4px;color:var(--text3);flex:0 0 auto">v4.9 年圖黃藍緋</span><div id="auth-bar-inner" style="display:flex;align-items:center;gap:8px"><button onclick="showLoginModal()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text2)"><span>☁️</span>信箱登入同步</button></div></div>
 <div id="sync-status" style="position:fixed;top:34px;right:12px;z-index:199;font-size:11px;color:var(--text3);font-weight:600"></div>
 
 <!-- ══ PAGE: 記帳 ══ -->
@@ -837,9 +845,9 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
     <canvas id="year-chart" style="width:100%;height:240px"></canvas>
   </div>
   <div style="display:flex;gap:12px;margin:10px 16px 0;flex-wrap:wrap">
-    <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2)"><span style="display:inline-block;width:20px;height:3px;background:var(--matcha);border-radius:2px"></span>月收入</div>
-    <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2)"><span style="display:inline-block;width:20px;height:3px;background:var(--sora);border-radius:2px"></span>投資&存款</div>
-    <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2)"><span style="display:inline-block;width:20px;height:3px;background:var(--sakura);border-radius:2px"></span>月支出</div>
+    <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2)"><span style="display:inline-block;width:22px;height:3px;background:var(--chart-income);border-radius:2px"></span>月收入</div>
+    <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2)"><span style="display:inline-block;width:22px;height:0;border-top:3px dashed var(--chart-save)"></span>投資&存款</div>
+    <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2)"><span style="display:inline-block;width:22px;height:0;border-top:3px dotted var(--chart-spend)"></span>月支出</div>
   </div>
   <div id="chart-monthly-list" style="margin-bottom:12px"></div>
 </div>
@@ -2319,7 +2327,7 @@ function renderChart() {
 
   function drawLine(arr, color, dash) {
     var di, dx, dy, started = false;
-    ctx.beginPath(); ctx.strokeStyle=color; ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.strokeStyle=color; ctx.lineWidth=3;
     if (dash) ctx.setLineDash(dash); else ctx.setLineDash([]);
     for (di=0; di<arr.length; di++) {
       if (!hasData[di]) { started = false; continue; }   // 還沒發生的月份：斷線，不要拉到 0
@@ -2334,9 +2342,11 @@ function renderChart() {
       ctx.fillStyle=color; ctx.fill();
     }
   }
-  drawLine(incomeData,  cvar('--matcha', '#6A8C69'), []);
-  drawLine(savingsData, cvar('--stanChart', '#6B8FAB'), [5,3]);
-  drawLine(spendingData,cvar('--sakura', '#D9697A'), []);
+  // 除了顏色，線型也刻意不同：實線 / 虛線 / 點虛線。
+  // 只靠顏色區分的話，色覺障礙或灰階截圖就分不出來。
+  drawLine(incomeData,  cvar('--chart-income', '#C89020'), []);
+  drawLine(savingsData, cvar('--chart-save',   '#3E6E96'), [6,4]);
+  drawLine(spendingData,cvar('--chart-spend',  '#96354C'), [9,3,2,3]);
 
   var listHtml = '';
   for (var mii=0; mii<12; mii++) {
