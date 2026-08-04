@@ -531,7 +531,7 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
 <body>
 
 <div class="toast" id="toast"></div>
-<div id="auth-bar" style="position:fixed;top:0;left:0;right:0;z-index:200;transform:translateZ(0);display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:0.4px;color:var(--text3);flex:0 0 auto">v5.4 累計雙線</span><div id="auth-bar-inner" style="display:flex;align-items:center;gap:8px"><button onclick="showLoginModal()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text2)"><span>☁️</span>信箱登入同步</button></div></div>
+<div id="auth-bar" style="position:fixed;top:0;left:0;right:0;z-index:200;transform:translateZ(0);display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:0.4px;color:var(--text3);flex:0 0 auto">v5.5 數字並排</span><div id="auth-bar-inner" style="display:flex;align-items:center;gap:8px"><button onclick="showLoginModal()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text2)"><span>☁️</span>信箱登入同步</button></div></div>
 <div id="sync-status" style="position:fixed;top:34px;right:12px;z-index:199;font-size:11px;color:var(--text3);font-weight:600"></div>
 
 <!-- ══ PAGE: 記帳 ══ -->
@@ -860,7 +860,6 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
       <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2)"><span style="display:inline-block;width:22px;height:3px;background:var(--chart-save);border-radius:2px"></span>還留著</div>
       <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2)"><span style="display:inline-block;width:22px;height:10px;background:var(--chart-spend);opacity:0.2;border-radius:2px"></span>花掉的</div>
     </div>
-    <div id="cum-note" style="font-size:11px;color:var(--text3);margin-top:8px;line-height:1.7"></div>
   </div>
   <div id="chart-monthly-list" style="margin-bottom:12px"></div>
 </div>
@@ -2311,7 +2310,6 @@ function renderCumChart() {
   var head = document.getElementById('cum-headline');
   var title = document.getElementById('cum-section-title');
   if (title) title.textContent = currentChartYear + ' 年的錢去哪了';
-  var note = document.getElementById('cum-note');
   if (!canvas || !head) return;
 
   // 只畫到「已經發生」的月份。未來月份有薪水收入但支出為 0，
@@ -2351,7 +2349,6 @@ function renderCumChart() {
 
   if (!cumKeep.length) {
     head.innerHTML = '<span style="font-size:13px;color:var(--text3)">這一年還沒有紀錄</span>';
-    if (note) note.textContent = '';
     return;
   }
 
@@ -2360,14 +2357,24 @@ function renderCumChart() {
   var spent = lastIn - lastKeep;
   var rate = lastIn > 0 ? Math.round(lastKeep / lastIn * 100) : 0;
 
+  // 三個數字並排，各自是可直接讀的欄位——不要把金額埋在一段敘述句裡
+  function stat(label, val, color, extra) {
+    return '<div style="flex:1;min-width:0">'
+      + '<div style="font-size:10px;color:var(--text3);margin-bottom:2px">' + label + '</div>'
+      + '<div style="font-size:15px;font-weight:800;color:' + color + ';white-space:nowrap">'
+      + (val < 0 ? '−' : '') + '$' + Math.abs(val).toLocaleString() + '</div>'
+      + (extra ? '<div style="font-size:10px;color:var(--text3)">' + extra + '</div>' : '')
+      + '</div>';
+  }
+  head.style.display = 'block';
   head.innerHTML =
-      '<span style="font-size:12px;color:var(--text3)">1 月到 ' + lastMonth + ' 月</span>'
-    + '<span style="font-size:12px;color:var(--text2)">留下 <b style="font-size:17px;color:' + cKeep + '">'
-    + (lastKeep < 0 ? '−' : '') + 'NT$' + Math.abs(lastKeep).toLocaleString() + '</b>'
-    + (lastIn > 0 ? '<span style="color:var(--text3)">（' + rate + '%）</span>' : '') + '</span>';
+      '<div style="font-size:11px;color:var(--text3);margin-bottom:8px">1 月到 ' + lastMonth + ' 月</div>'
+    + '<div style="display:flex;gap:10px;align-items:flex-start">'
+    + stat('累計收入', lastIn, cIn, '')
+    + stat('花掉的', spent, cSpend, '')
+    + stat('還留著', lastKeep, cKeep, lastIn > 0 ? '佔收入 ' + rate + '%' : '')
+    + '</div>';
 
-  if (note) note.textContent = '黃線是累計收入，藍線是扣掉實際花費後真正還留著的錢，中間那塊就是花掉的 NT$'
-    + spent.toLocaleString() + '。存進去之後又花掉的錢，藍線會跟著降下來。';
 
   var padL = 46, padR = 10, padT = 12, padB = 24;
   var chartW = W - padL - padR, chartH = H - padT - padB;
