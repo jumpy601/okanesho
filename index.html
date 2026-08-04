@@ -531,7 +531,7 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
 <body>
 
 <div class="toast" id="toast"></div>
-<div id="auth-bar" style="position:fixed;top:0;left:0;right:0;z-index:200;transform:translateZ(0);display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:0.4px;color:var(--text3);flex:0 0 auto">v5.0 年圖實線</span><div id="auth-bar-inner" style="display:flex;align-items:center;gap:8px"><button onclick="showLoginModal()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text2)"><span>☁️</span>信箱登入同步</button></div></div>
+<div id="auth-bar" style="position:fixed;top:0;left:0;right:0;z-index:200;transform:translateZ(0);display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:0.4px;color:var(--text3);flex:0 0 auto">v5.1 歷史值修正</span><div id="auth-bar-inner" style="display:flex;align-items:center;gap:8px"><button onclick="showLoginModal()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text2)"><span>☁️</span>信箱登入同步</button></div></div>
 <div id="sync-status" style="position:fixed;top:34px;right:12px;z-index:199;font-size:11px;color:var(--text3);font-weight:600"></div>
 
 <!-- ══ PAGE: 記帳 ══ -->
@@ -1076,6 +1076,21 @@ function normalizeData() {
     if (e.included === undefined) e.included = true;
     if (e.note === undefined) e.note = '';
   });
+  // 舊資料沒有 startOrd。若它在某些月份有覆蓋值，就以最早那一期為起始；
+  // 完全沒有覆蓋紀錄的（例如從一開始就存在的房租）維持「一直有效」。
+  data.budgetAllocs.forEach(function(a){
+    if (a.startOrd === undefined) {
+      var earliest = null;
+      Object.keys(data.monthlyOverrides || {}).forEach(function(k){
+        if (data.monthlyOverrides[k] && data.monthlyOverrides[k][a.id] !== undefined) {
+          var pm = k.split('-');
+          var ord = parseInt(pm[0],10) * 12 + parseInt(pm[1],10);
+          if (earliest === null || ord < earliest) earliest = ord;
+        }
+      });
+      a.startOrd = earliest;   // null/undefined = 視為一直存在
+    }
+  });
   data.budgetAllocs.forEach(function(a){
     if (!a.allocType) {
       if (a.isIncome) a.allocType = 'income';
@@ -1099,13 +1114,21 @@ function load() {
 function periodKey(p) { return p.year + '-' + p.month; }
 
 // Get alloc amount for a specific period (override or default)
+// 期間的可比較序號（'2026-9' 這種字串不能直接比大小）
+function periodOrd(p) { return p.year * 12 + p.month; }
+
 function getAllocAmount(allocId, p) {
   var key = periodKey(p);
+  // 該期有明確覆蓋值 → 一律以它為準
   if (data.monthlyOverrides[key] && data.monthlyOverrides[key][allocId] !== undefined) {
     return data.monthlyOverrides[key][allocId];
   }
   var a = data.budgetAllocs.find(function(x){ return x.id == allocId; });
-  return a ? (a.amount || 0) : 0;
+  if (!a) return 0;
+  // 這個項目「開始存在」之前的期間一律 0。
+  // 否則今天新增一筆「定期定額 30000」，會讓 1～6 月全都追溯多出 30000。
+  if (a.startOrd && periodOrd(p) < a.startOrd) return 0;
+  return a.amount || 0;
 }
 
 function setAllocOverride(allocId, p, val) {
@@ -2125,6 +2148,7 @@ function addFixedExpense() {
   var name = document.getElementById('new-expense-name').value.trim();
   var amount = parseFloat(document.getElementById('new-expense-amount').value)||0;
   if (!name) { showToast('⚠️ 請輸入項目名稱'); return; }
+  snapshotHistoryMonths();
   data.fixedExpenses.push({ id: mkId(), name: name, amount: amount, included: true, note: '' });
   save();
   document.getElementById('new-expense-name').value = '';
@@ -2141,7 +2165,8 @@ function addMonthAlloc() {
   var key = periodKey(p);
   // 建立新的 budgetAlloc
   var newId = mkId();
-  data.budgetAllocs.push({ id: newId, name: name, amount: 0, allocType: type });
+  snapshotHistoryMonths();   // 先凍結既有項目的歷史值，再動結構
+  data.budgetAllocs.push({ id: newId, name: name, amount: 0, allocType: type, startOrd: periodOrd(p) });
   // 立刻在當月設定 override
   if (!data.monthlyOverrides[key]) data.monthlyOverrides[key] = {};
   data.monthlyOverrides[key][newId] = amount;
@@ -2158,7 +2183,9 @@ function addBudgetAlloc() {
   if (!name) { showToast('⚠️ 請輸入項目名稱'); return; }
   var p = getSettingsPeriod();
   var newId = mkId();
-  data.budgetAllocs.push({ id: newId, name: name, amount: amount, allocType: 'other' });
+  snapshotHistoryMonths();   // 先凍結既有項目的歷史值，再動結構
+  // startOrd：這個項目從哪一期開始生效，更早的月份不受影響
+  data.budgetAllocs.push({ id: newId, name: name, amount: amount, allocType: 'other', startOrd: periodOrd(p) });
   setAllocOverride(newId, p, amount);
   save();
   document.getElementById('new-alloc-name').value = '';
@@ -2210,7 +2237,7 @@ function openExtraAlloc(id) {
     h += '<option value="saving"' + (al.type==='saving'?' selected':'') + '>🏦 存款</option>';
     h += '<option value="invest"' + (al.type==='invest'?' selected':'') + '>📈 投資</option>';
     h += '<option value="reserve"' + (al.type==='reserve'?' selected':'') + '>💾 預存</option>';
-    h += '<option value="spending"' + (al.type==='spending'?' selected':'') + '>💸 消費（不扣餘額，實際花費由記帳計）</option>';
+    h += '<option value="other"' + (al.type==='other'||al.type==='spending'?' selected':'') + '>📋 預算（不扣餘額，實際花費由記帳計）</option>';
     h += '</select>';
     h += '<input type="number" value="' + al.amount + '" inputmode="decimal" data-eid="' + id + '" data-ai="' + ai + '" data-f="amount" onchange="allocChange(this)" style="width:100px;padding:6px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:14px;font-family:inherit;text-align:right;background:var(--bg)">';
     h += '<button data-eid="' + id + '" data-ai="' + ai + '" onclick="allocRemove(this)" style="width:28px;height:28px;border:none;background:var(--sakura-l);border-radius:7px;cursor:pointer;flex-shrink:0">✕</button>';
