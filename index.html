@@ -531,7 +531,7 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
 <body>
 
 <div class="toast" id="toast"></div>
-<div id="auth-bar" style="position:fixed;top:0;left:0;right:0;z-index:200;transform:translateZ(0);display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:0.4px;color:var(--text3);flex:0 0 auto">v5.2 累計淨累積</span><div id="auth-bar-inner" style="display:flex;align-items:center;gap:8px"><button onclick="showLoginModal()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text2)"><span>☁️</span>信箱登入同步</button></div></div>
+<div id="auth-bar" style="position:fixed;top:0;left:0;right:0;z-index:200;transform:translateZ(0);display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:0.4px;color:var(--text3);flex:0 0 auto">v5.4 累計雙線</span><div id="auth-bar-inner" style="display:flex;align-items:center;gap:8px"><button onclick="showLoginModal()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text2)"><span>☁️</span>信箱登入同步</button></div></div>
 <div id="sync-status" style="position:fixed;top:34px;right:12px;z-index:199;font-size:11px;color:var(--text3);font-weight:600"></div>
 
 <!-- ══ PAGE: 記帳 ══ -->
@@ -850,10 +850,15 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
     <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2)"><span style="display:inline-block;width:22px;height:3px;background:var(--chart-spend);border-radius:2px"></span>月支出</div>
   </div>
   <div style="margin:18px 16px 0">
-    <div style="font-size:11px;color:var(--text3);font-weight:600;letter-spacing:0.5px;margin-bottom:8px">累計淨累積（收入 − 支出）</div>
+    <div id="cum-section-title" style="font-size:11px;color:var(--text3);font-weight:600;letter-spacing:0.5px;margin-bottom:8px"></div>
     <div style="background:var(--surface);border-radius:var(--r);border:1.5px solid var(--border);padding:16px 8px 8px">
       <div id="cum-headline" style="padding:0 8px 10px;display:flex;justify-content:space-between;align-items:baseline"></div>
-      <canvas id="cum-chart" style="width:100%;height:170px"></canvas>
+      <canvas id="cum-chart" style="width:100%;height:180px"></canvas>
+    </div>
+    <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2)"><span style="display:inline-block;width:22px;height:3px;background:var(--chart-income);border-radius:2px"></span>累計收入</div>
+      <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2)"><span style="display:inline-block;width:22px;height:3px;background:var(--chart-save);border-radius:2px"></span>還留著</div>
+      <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2)"><span style="display:inline-block;width:22px;height:10px;background:var(--chart-spend);opacity:0.2;border-radius:2px"></span>花掉的</div>
     </div>
     <div id="cum-note" style="font-size:11px;color:var(--text3);margin-top:8px;line-height:1.7"></div>
   </div>
@@ -2298,12 +2303,14 @@ function openExtraAllocById(el) { openExtraAlloc(el.getAttribute('data-eid')); }
 // ── CHART ────────────────────────────────────────────
 function changeYear(delta) { currentChartYear += delta; renderChart(); }
 
-// 累計淨累積 = Σ(收入 − 實際支出)
+// 實際留下來的錢 = Σ(收入 − 實際支出)
 // 刻意不用「Σ分配(存款+投資+預存)」：錢從預存桶拿出來花掉時，分配加總不會反應，
 // 那條線只會一直爬。收入−支出則會立刻走平，而且不受分類方式影響。
 function renderCumChart() {
   var canvas = document.getElementById('cum-chart');
   var head = document.getElementById('cum-headline');
+  var title = document.getElementById('cum-section-title');
+  if (title) title.textContent = currentChartYear + ' 年的錢去哪了';
   var note = document.getElementById('cum-note');
   if (!canvas || !head) return;
 
@@ -2315,18 +2322,20 @@ function renderCumChart() {
   else if (currentChartYear > now.year) lastMonth = 0;
   else lastMonth = now.month;
 
-  var cum = [], running = 0;
+  // 兩條累計線：上=累計收入，下=實際留下來。兩線之間的距離就是累計花掉的錢。
+  var cumIn = [], cumKeep = [], rIn = 0, rKeep = 0;
   for (var mi = 1; mi <= lastMonth; mi++) {
     var s = getPeriodSummary({ year: currentChartYear, month: mi });
-    running += s.income - (s.ccTotal + s.cashTotal);
-    cum.push(running);
+    rIn += s.income;
+    rKeep += s.income - (s.ccTotal + s.cashTotal);
+    cumIn.push(rIn); cumKeep.push(rKeep);
   }
 
   var ctx = canvas.getContext('2d');
   var dpr = window.devicePixelRatio || 1;
   var rect = canvas.parentElement.getBoundingClientRect();
   var W = (rect.width > 32 ? rect.width : window.innerWidth - 48) - 16;
-  var H = 170;
+  var H = 180;
   canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
   canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
   ctx.setTransform(1,0,0,1,0,0); ctx.scale(dpr, dpr);
@@ -2334,72 +2343,78 @@ function renderCumChart() {
 
   var cs = getComputedStyle(document.body);
   function cvar(n, fb) { var v = cs.getPropertyValue(n).trim(); return v || fb; }
-  var cGrid = cvar('--border', '#DDD9CF');
+  var cGrid  = cvar('--border', '#DDD9CF');
   var cLabel = cvar('--text3', '#A89F8C');
-  var cLine = cvar('--chart-save', '#3E6E96');
+  var cIn    = cvar('--chart-income', '#C89020');
+  var cKeep  = cvar('--chart-save', '#3E6E96');
+  var cSpend = cvar('--chart-spend', '#96354C');
 
-  if (!cum.length) {
-    head.innerHTML = '<span style="font-size:13px;color:var(--text3)">這一年還沒有資料</span>';
+  if (!cumKeep.length) {
+    head.innerHTML = '<span style="font-size:13px;color:var(--text3)">這一年還沒有紀錄</span>';
     if (note) note.textContent = '';
     return;
   }
 
-  var last = cum[cum.length - 1];
-  head.innerHTML = '<span style="font-size:12px;color:var(--text3)">1–' + lastMonth + ' 月累計</span>'
-    + '<span style="font-size:20px;font-weight:800;color:' + (last >= 0 ? 'var(--chart-save)' : 'var(--chart-spend)') + '">'
-    + (last >= 0 ? '+' : '−') + 'NT$' + Math.abs(last).toLocaleString() + '</span>';
-  if (note) note.textContent = '每個月把「收入 − 實際支出」累加起來，代表實際留下來的錢。分配到存款／投資／預存的錢若之後花掉，這條線會跟著走平。';
+  var lastIn = cumIn[cumIn.length - 1];
+  var lastKeep = cumKeep[cumKeep.length - 1];
+  var spent = lastIn - lastKeep;
+  var rate = lastIn > 0 ? Math.round(lastKeep / lastIn * 100) : 0;
+
+  head.innerHTML =
+      '<span style="font-size:12px;color:var(--text3)">1 月到 ' + lastMonth + ' 月</span>'
+    + '<span style="font-size:12px;color:var(--text2)">留下 <b style="font-size:17px;color:' + cKeep + '">'
+    + (lastKeep < 0 ? '−' : '') + 'NT$' + Math.abs(lastKeep).toLocaleString() + '</b>'
+    + (lastIn > 0 ? '<span style="color:var(--text3)">（' + rate + '%）</span>' : '') + '</span>';
+
+  if (note) note.textContent = '黃線是累計收入，藍線是扣掉實際花費後真正還留著的錢，中間那塊就是花掉的 NT$'
+    + spent.toLocaleString() + '。存進去之後又花掉的錢，藍線會跟著降下來。';
 
   var padL = 46, padR = 10, padT = 12, padB = 24;
   var chartW = W - padL - padR, chartH = H - padT - padB;
 
-  // 縱軸範圍：一定包含 0，負值時也畫得出來
-  var maxV = Math.max.apply(null, cum.concat([0]));
-  var minV = Math.min.apply(null, cum.concat([0]));
+  var all = cumIn.concat(cumKeep).concat([0]);
+  var maxV = Math.max.apply(null, all);
+  var minV = Math.min.apply(null, all);
   if (maxV === minV) maxV = minV + 1;
   function y(v) { return padT + chartH * (1 - (v - minV) / (maxV - minV)); }
   function x(i) { return padL + (lastMonth <= 1 ? chartW / 2 : (i / (lastMonth - 1)) * chartW); }
 
-  // 網格與刻度
   ctx.strokeStyle = cGrid; ctx.lineWidth = 1;
   ctx.fillStyle = cLabel; ctx.font = '10px -apple-system,sans-serif'; ctx.textAlign = 'right';
   for (var g = 0; g <= 3; g++) {
-    var val = minV + (maxV - minV) * g / 3;
-    var yy = y(val);
+    var val = minV + (maxV - minV) * g / 3, yy = y(val);
     ctx.beginPath(); ctx.moveTo(padL, yy); ctx.lineTo(W - padR, yy); ctx.stroke();
     var lbl = Math.abs(val) >= 10000 ? (Math.round(val / 1000) / 10) + '萬' : Math.round(val).toLocaleString();
     ctx.fillText(lbl, padL - 6, yy + 3);
   }
-  // 零線加深（負值時才看得出來跨越）
   if (minV < 0) {
     ctx.strokeStyle = cLabel; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(padL, y(0)); ctx.lineTo(W - padR, y(0)); ctx.stroke();
   }
 
-  // 面積填色
+  // 兩線之間填色 = 累計花掉的錢
+  var i;
   ctx.beginPath();
-  ctx.moveTo(x(0), y(0));
-  for (var i = 0; i < cum.length; i++) ctx.lineTo(x(i), y(cum[i]));
-  ctx.lineTo(x(cum.length - 1), y(0)); ctx.closePath();
-  ctx.fillStyle = cLine; ctx.globalAlpha = 0.12; ctx.fill(); ctx.globalAlpha = 1;
+  for (i = 0; i < cumIn.length; i++) { if (i === 0) ctx.moveTo(x(i), y(cumIn[i])); else ctx.lineTo(x(i), y(cumIn[i])); }
+  for (i = cumKeep.length - 1; i >= 0; i--) ctx.lineTo(x(i), y(cumKeep[i]));
+  ctx.closePath();
+  ctx.fillStyle = cSpend; ctx.globalAlpha = 0.13; ctx.fill(); ctx.globalAlpha = 1;
 
-  // 線與點
-  ctx.beginPath(); ctx.strokeStyle = cLine; ctx.lineWidth = 3;
-  for (var j = 0; j < cum.length; j++) {
-    if (j === 0) ctx.moveTo(x(j), y(cum[j])); else ctx.lineTo(x(j), y(cum[j]));
+  function line(arr, color) {
+    ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 3;
+    for (var j = 0; j < arr.length; j++) { if (j === 0) ctx.moveTo(x(j), y(arr[j])); else ctx.lineTo(x(j), y(arr[j])); }
+    ctx.stroke();
+    for (var k = 0; k < arr.length; k++) {
+      ctx.beginPath(); ctx.arc(x(k), y(arr[k]), 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = color; ctx.fill();
+    }
   }
-  ctx.stroke();
-  for (var k = 0; k < cum.length; k++) {
-    ctx.beginPath(); ctx.arc(x(k), y(cum[k]), 3.5, 0, Math.PI * 2);
-    ctx.fillStyle = cLine; ctx.fill();
-  }
+  line(cumIn, cIn);
+  line(cumKeep, cKeep);
 
-  // X 軸月份
   ctx.fillStyle = cLabel; ctx.textAlign = 'center'; ctx.font = '10px -apple-system,sans-serif';
   var step = lastMonth > 8 ? 2 : 1;
-  for (var m2 = 0; m2 < lastMonth; m2 += step) {
-    ctx.fillText((m2 + 1) + '月', x(m2), H - 8);
-  }
+  for (var m2 = 0; m2 < lastMonth; m2 += step) ctx.fillText((m2 + 1) + '月', x(m2), H - 8);
 }
 
 function renderChart() {
