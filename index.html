@@ -492,7 +492,7 @@ body.theme-cat{--hero-c1:#C8651A;--hero-c2:#E08838;--hero-c3:#F0AA5E;--hero-emoj
 
 /* ══ 珊瑚礁主題 ══ */
 body.theme-coral {
-  --chart-income:#C99420; --chart-save:#3A6BA5; --chart-spend:#A83A55;
+  --chart-income:#C99420; --chart-save:#4E82BC; --chart-spend:#9B3049;
   --bg:#F0F8FF;--bg2:#E0F2FF;--surface:#FFFFFF;--surface2:#E8F6FF;
   --border:#C5E8F5;--text:#0A4A6E;--text2:#2A6A90;--text3:#5AA8C8;
   --matcha:#E8734A;--matcha-l:#FFF0E8;--matcha-m:#F5B090;
@@ -531,7 +531,7 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
 <body>
 
 <div class="toast" id="toast"></div>
-<div id="auth-bar" style="position:fixed;top:0;left:0;right:0;z-index:200;transform:translateZ(0);display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:0.4px;color:var(--text3);flex:0 0 auto">v4.9 年圖黃藍緋</span><div id="auth-bar-inner" style="display:flex;align-items:center;gap:8px"><button onclick="showLoginModal()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text2)"><span>☁️</span>信箱登入同步</button></div></div>
+<div id="auth-bar" style="position:fixed;top:0;left:0;right:0;z-index:200;transform:translateZ(0);display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:0.4px;color:var(--text3);flex:0 0 auto">v5.0 年圖實線</span><div id="auth-bar-inner" style="display:flex;align-items:center;gap:8px"><button onclick="showLoginModal()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text2)"><span>☁️</span>信箱登入同步</button></div></div>
 <div id="sync-status" style="position:fixed;top:34px;right:12px;z-index:199;font-size:11px;color:var(--text3);font-weight:600"></div>
 
 <!-- ══ PAGE: 記帳 ══ -->
@@ -846,8 +846,8 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
   </div>
   <div style="display:flex;gap:12px;margin:10px 16px 0;flex-wrap:wrap">
     <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2)"><span style="display:inline-block;width:22px;height:3px;background:var(--chart-income);border-radius:2px"></span>月收入</div>
-    <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2)"><span style="display:inline-block;width:22px;height:0;border-top:3px dashed var(--chart-save)"></span>投資&存款</div>
-    <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2)"><span style="display:inline-block;width:22px;height:0;border-top:3px dotted var(--chart-spend)"></span>月支出</div>
+    <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2)"><span style="display:inline-block;width:22px;height:3px;background:var(--chart-save);border-radius:2px"></span>投資&存款</div>
+    <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text2)"><span style="display:inline-block;width:22px;height:3px;background:var(--chart-spend);border-radius:2px"></span>月支出</div>
   </div>
   <div id="chart-monthly-list" style="margin-bottom:12px"></div>
 </div>
@@ -2342,11 +2342,11 @@ function renderChart() {
       ctx.fillStyle=color; ctx.fill();
     }
   }
-  // 除了顏色，線型也刻意不同：實線 / 虛線 / 點虛線。
-  // 只靠顏色區分的話，色覺障礙或灰階截圖就分不出來。
+  // 三條一律實線：虛線的斷點在細線密集時會製造視覺雜訊。
+  // 區分完全靠顏色，因此配色的色相差與兩色對比必須先驗過（見 tracking-charts skill）。
   drawLine(incomeData,  cvar('--chart-income', '#C89020'), []);
-  drawLine(savingsData, cvar('--chart-save',   '#3E6E96'), [6,4]);
-  drawLine(spendingData,cvar('--chart-spend',  '#96354C'), [9,3,2,3]);
+  drawLine(savingsData, cvar('--chart-save',   '#3E6E96'), []);
+  drawLine(spendingData,cvar('--chart-spend',  '#96354C'), []);
 
   var listHtml = '';
   for (var mii=0; mii<12; mii++) {
