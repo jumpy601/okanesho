@@ -172,13 +172,7 @@ input:focus, select:focus {
   transition: all 0.15s; color: var(--text2); text-align: center;
   font-family: inherit;
 }
-.bank-pill[data-bank="台新"].active  { border-color: var(--taishin);  background: var(--sakura-l); color: var(--taishin); }
-.bank-pill[data-bank="星展"].active  { border-color: var(--stanChart); background: var(--sora-l);   color: var(--stanChart); }
-.bank-pill[data-bank="聯邦"].active { border-color: var(--lianBang); background: var(--matcha-l); color: var(--lianBang); }
 
-.bank-pill[data-bank="台新"]  .pill-icon { display: block; font-size: 16px; margin-bottom: 2px; }
-.bank-pill[data-bank="星展"]  .pill-icon { display: block; font-size: 16px; margin-bottom: 2px; }
-.bank-pill[data-bank="聯邦"] .pill-icon { display: block; font-size: 16px; margin-bottom: 2px; }
 
 .btn-add {
   width: 100%; padding: 13px;
@@ -531,7 +525,7 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
 <body>
 
 <div class="toast" id="toast"></div>
-<div id="auth-bar" style="position:fixed;top:0;left:0;right:0;z-index:200;transform:translateZ(0);display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:0.4px;color:var(--text3);flex:0 0 auto">v5.5 數字並排</span><div id="auth-bar-inner" style="display:flex;align-items:center;gap:8px"><button onclick="showLoginModal()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text2)"><span>☁️</span>信箱登入同步</button></div></div>
+<div id="auth-bar" style="position:fixed;top:0;left:0;right:0;z-index:200;transform:translateZ(0);display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:0.4px;color:var(--text3);flex:0 0 auto">v5.6 卡片改用編號</span><div id="auth-bar-inner" style="display:flex;align-items:center;gap:8px"><button onclick="showLoginModal()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text2)"><span>☁️</span>信箱登入同步</button></div></div>
 <div id="sync-status" style="position:fixed;top:34px;right:12px;z-index:199;font-size:11px;color:var(--text3);font-weight:600"></div>
 
 <!-- ══ PAGE: 記帳 ══ -->
@@ -1084,6 +1078,13 @@ function normalizeData() {
     data.cards = JSON.parse(JSON.stringify(DEFAULT_DATA.cards));
   }
   data.cards.forEach(function(c, i){ if (!c.catKey) c.catKey = CAT_KEYS[i % CAT_KEYS.length]; });
+  // 舊交易只有卡片名稱 → 依名稱對回 cardId。對不到（卡已刪）就保留名稱當孤兒，金額照算不會遺失。
+  data.transactions.forEach(function(tx){
+    if (tx.cardId === undefined) {
+      var c = (data.cards||[]).find(function(k){ return k.name === tx.bank; });
+      tx.cardId = c ? c.id : null;
+    }
+  });
   data.fixedExpenses.forEach(function(e){
     if (e.included === undefined) e.included = true;
     if (e.note === undefined) e.note = '';
@@ -1268,12 +1269,21 @@ function weekLabel(wn, p) {
   function f(d) { return (d.getMonth()+1) + '/' + d.getDate(); }
   return '第 ' + wn + ' 週　' + f(ws) + ' – ' + f(we);
 }
-function getCard(name) {
-  var c = (data.cards||[]).find(function(c){ return c.name === name; });
-  return c || { emoji: '💳', color: 'var(--bg2)', textColor: 'var(--text2)' };
+// ── 卡片參照：一律用 id ────────────────────────────────
+// 交易以前存卡片「名稱」，導致：刪卡後該卡的帳從月總覽消失（各卡加總對不上信用卡總額）、
+// 兩張同名卡的帳被重複加總、也無法安全改名。現在交易存 cardId，名稱只當顯示用的快照。
+var DELETED_CARD = { emoji: '💳', color: 'var(--bg2)', textColor: 'var(--text2)', catKey: null };
+function cardById(id) {
+  if (id === null || id === undefined) return null;
+  return (data.cards||[]).find(function(c){ return c.id == id; }) || null;
 }
-function bankEmoji(bank) { return getCard(bank).emoji; }
-function bankColor(bank) { return getCard(bank).color; }
+function cardOfTx(tx) { return cardById(tx.cardId); }
+// 顯示名稱：卡還在就用現在的名字（改名會自動反映），卡被刪了就用當時記下的名字
+function cardNameOfTx(tx) {
+  var c = cardOfTx(tx);
+  if (c) return c.name;
+  return (tx.bank || '') + '（已刪除的卡）';
+}
 
 // ── PERIOD SUMMARY ───────────────────────────────────
 // 分類定義集中一處：新增／改名分類只要改這裡
@@ -1344,9 +1354,9 @@ function getPeriodSummary(p) {
 }
 
 // ── STATE ────────────────────────────────────────────
-var selectedBank = '台新';
+var selectedCardId = null;   // 記帳表單目前選的卡（存 id，不存名稱）
 var editingId = null;
-var editBank = '台新';
+var editCardId = null;       // 編輯視窗目前選的卡（與記帳表單分開，互不干擾）
 var currentSubTab = 'cc';
 var editingExtraId = null;
 
@@ -1378,15 +1388,6 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('new-extra-date').value = ds;
   syncDateInputs();
 
-  function setupPills(selector, onSelect) {
-    document.querySelectorAll(selector + ' .bank-pill').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        document.querySelectorAll(selector + ' .bank-pill').forEach(function(b){ b.classList.remove('active'); });
-        btn.classList.add('active');
-        onSelect(btn.dataset.bank);
-      });
-    });
-  }
   renderBankPills();
   renderAll();
   applyTheme(currentTheme);
@@ -1473,7 +1474,7 @@ function renderSearch() {
     var t = x.t, isCash = x.kind === 'cash';
     var pOf = periodOfDate(t.date);
     html += '<div class="tx-item"><div class="tx-bank-badge" style="background:var(--kinari-l)">' + (isCash ? '💵' : '💳') + '</div>';
-    html += '<div class="tx-info"><div class="tx-name">' + esc(t.name) + '</div><div class="tx-meta">' + t.date.replace(/-/g,'/') + '　' + periodShort(pOf) + ' 期' + (isCash ? '' : '　' + esc(t.bank||'')) + '</div></div>';
+    html += '<div class="tx-info"><div class="tx-name">' + esc(t.name) + '</div><div class="tx-meta">' + t.date.replace(/-/g,'/') + '　' + periodShort(pOf) + ' 期' + (isCash ? '' : '　' + esc(cardNameOfTx(t))) + '</div></div>';
     html += '<div class="tx-amount">$' + (t.amount||0).toLocaleString() + '</div>';
     html += '<div class="tx-actions"><button class="tx-btn" data-txid="' + t.id + '" onclick="' + (isCash ? 'openCashEditById' : 'openEditById') + '(this)">✏️</button></div></div>';
   });
@@ -1524,12 +1525,12 @@ function renderRecord() {
       group.forEach(function(tx){
         html += '<div class="tx-item' + ((tx.settled && showSettle) ? ' settled' : '') + '">';
         var isCatTheme = usesCatCards();
-        var txCard = getCard(tx.bank);
+        var txCard = cardOfTx(tx) || DELETED_CARD;
         var badgeInner = (isCatTheme && txCard.catKey)
           ? '<span style=\'display:block;width:24px;height:24px;line-height:0\'>' + scaleSvg(getCatSvg(txCard.catKey)) + '</span>'
-          : bankEmoji(tx.bank);
-        html += '<div class="tx-bank-badge" style="background:' + bankColor(tx.bank) + '">' + badgeInner + '</div>';
-        html += '<div class="tx-info"><div class="tx-name">' + esc(tx.name) + '</div><div class="tx-meta">' + tx.date.slice(5).replace('-','/') + '　' + esc(tx.bank) + '</div></div>';
+          : txCard.emoji;
+        html += '<div class="tx-bank-badge" style="background:' + txCard.color + '">' + badgeInner + '</div>';
+        html += '<div class="tx-info"><div class="tx-name">' + esc(tx.name) + '</div><div class="tx-meta">' + tx.date.slice(5).replace('-','/') + '　' + esc(cardNameOfTx(tx)) + '</div></div>';
         html += '<div class="tx-amount">$' + tx.amount.toLocaleString() + '</div>';
         html += '<div class="tx-actions"><button class="tx-btn" data-txid="' + tx.id + '" onclick="openEditById(this)">✏️</button><button class="tx-btn del" data-txid="' + tx.id + '" onclick="deleteById(this)">🗑</button></div>';
         html += '</div>';
@@ -1547,7 +1548,10 @@ function addTransaction() {
   if (!name) { showToast('⚠️ 請輸入品項名稱'); return; }
   if (!amount||amount<=0) { showToast('⚠️ 請輸入金額'); return; }
   if (!date) { showToast('⚠️ 請選擇日期'); return; }
-  data.transactions.push({ id: mkId(), name: name, amount: amount, date: date, bank: selectedBank, settled: false });
+  var selCard = cardById(selectedCardId);
+  if (!selCard) { showToast('⚠️ 請先選擇信用卡'); return; }
+  // cardId 是真正的參照；bank 只是名稱快照，卡被刪掉時拿來顯示
+  data.transactions.push({ id: mkId(), name: name, amount: amount, date: date, cardId: selCard.id, bank: selCard.name, settled: false });
   save();
   document.getElementById('input-name').value = '';
   document.getElementById('input-amount').value = '';
@@ -1594,7 +1598,7 @@ function openEditTx(id, kind) {
   // 用 CSS 顯示切換，不重組 HTML
   var bankField = document.getElementById('edit-bank-field');
   if (bankField) bankField.style.display = (kind === 'cash') ? 'none' : '';
-  if (kind === 'card') { editBank = tx.bank; renderBankPills(tx.bank); }
+  if (kind === 'card') { editCardId = tx.cardId; renderEditPills(tx.cardId); }
   document.getElementById('edit-modal').classList.add('open');
 }
 
@@ -1610,7 +1614,10 @@ function saveEdit() {
   if (!(amount > 0)) { showToast('⚠️ 金額要大於 0'); return; }
   if (!date) { showToast('⚠️ 請選擇日期'); return; }
   tx.name = name; tx.amount = amount; tx.date = date;
-  if (editingKind === 'card') tx.bank = editBank;
+  if (editingKind === 'card') {
+    var ec = cardById(editCardId);
+    if (ec) { tx.cardId = ec.id; tx.bank = ec.name; }
+  }
   var kind = editingKind;
   save(); closeEditModal(); renderAll();
   // 若改完日期後跑到別的期間，明講它去了哪，避免「改完就不見了」
@@ -1748,17 +1755,21 @@ function renderOverview() {
     html += '<div class="ov-row"><div class="ov-row-name">✅ 已匯' + esc(settleBankName()) + '</div><div class="ov-row-val val-green">$' + s.settled.toLocaleString() + '</div></div>';
     html += '<div class="ov-row"><div class="ov-row-name">🕐 待匯</div><div class="ov-row-val val-gold">$' + (s.ccTotal-s.settled).toLocaleString() + '</div></div>';
   }
-  (data.cards||[]).map(function(c){return c.name;}).forEach(function(b){
-    var bt = data.transactions.filter(function(t){return inPeriod(t,p)&&t.bank===b;}).reduce(function(sum,t){return sum+t.amount;},0);
-    if (bt) {
-      var isCatT = usesCatCards();
-      var card = getCard(b);
-      var bIcon = (isCatT && card.catKey)
-        ? '<span style=\'display:inline-block;width:20px;height:20px;vertical-align:middle;line-height:0\'>' + scaleSvg(getCatSvg(card.catKey)) + '</span>'
-        : bankEmoji(b);
-      html += '<div class=\"ov-row\"><div class=\"ov-row-name\">' + bIcon + ' ' + b + '</div><div class=\"ov-row-val\">$' + bt.toLocaleString() + '</div></div>';
-    }
+  // 依 cardId 分組。卡被刪除的帳另列一行，確保各卡加總永遠等於信用卡總額。
+  var periodTx = data.transactions.filter(function(t){ return inPeriod(t,p); });
+  var isCatT = usesCatCards();
+  (data.cards||[]).forEach(function(card){
+    var bt = periodTx.filter(function(t){ return t.cardId == card.id; }).reduce(function(sum,t){ return sum+t.amount; }, 0);
+    if (!bt) return;
+    var bIcon = (isCatT && card.catKey)
+      ? '<span style=\'display:inline-block;width:20px;height:20px;vertical-align:middle;line-height:0\'>' + scaleSvg(getCatSvg(card.catKey)) + '</span>'
+      : card.emoji;
+    html += '<div class="ov-row"><div class="ov-row-name">' + bIcon + ' ' + esc(card.name) + '</div><div class="ov-row-val">$' + bt.toLocaleString() + '</div></div>';
   });
+  var orphanTotal = periodTx.filter(function(t){ return !cardOfTx(t); }).reduce(function(sum,t){ return sum+t.amount; }, 0);
+  if (orphanTotal) {
+    html += '<div class="ov-row"><div class="ov-row-name" style="color:var(--text3)">💳 已刪除的卡</div><div class="ov-row-val" style="color:var(--text3)">$' + orphanTotal.toLocaleString() + '</div></div>';
+  }
   html += '</div>';
 
   document.getElementById('overview-content').innerHTML = html;
@@ -2605,25 +2616,29 @@ function getCatSvg(catKey) {
 }
 
 
-function renderBankPills(selectedName) {
+function pillHtml(c, isActive, pid) {
+  var isCat = usesCatCards();
+  var iconHtml = isCat && c.catKey
+    ? '<span style="display:block;width:36px;height:36px;margin-bottom:2px">' + getCatSvg(c.catKey) + '</span>'
+    : '<span style="display:block;font-size:16px;margin-bottom:2px">' + c.emoji + '</span>';
+  return '<button class="bank-pill" data-cid="' + esc(String(c.id)) + '" data-pid="' + pid + '" style="border-color:' + c.textColor + ';background:' + c.color + ';color:' + c.textColor + ';opacity:' + (isActive?'1':'0.5') + ';border-width:' + (isActive?'2':'1.5') + 'px;flex-direction:column;display:flex;align-items:center;justify-content:center" onclick="selectPill(this)">' + iconHtml + '<span>' + esc(c.name) + '</span></button>';
+}
+
+// 記帳表單的卡片按鈕。selectedCardId 若指向已刪除的卡，自動改選第一張。
+function renderBankPills() {
   var cards = data.cards || [];
-  if (!selectedName) selectedName = cards.length > 0 ? cards[0].name : '';
-  selectedBank = selectedName;
-  ['add-bank-pills', 'edit-bank-pills'].forEach(function(pid) {
-    var container = document.getElementById(pid);
-    if (!container) return;
-    var html = '';
-    cards.forEach(function(c) {
-      var isActive = c.name === selectedName;
-      var isCat = usesCatCards();
-      var iconHtml = isCat && c.catKey
-        ? '<span style="display:block;width:36px;height:36px;margin-bottom:2px">' + getCatSvg(c.catKey) + '</span>'
-        : '<span style="display:block;font-size:16px;margin-bottom:2px">' + c.emoji + '</span>';
-      html += '<button class="bank-pill" data-bank="' + c.name + '" data-pid="' + pid + '" style="border-color:' + c.textColor + ';background:' + c.color + ';color:' + c.textColor + ';opacity:' + (isActive?'1':'0.5') + ';border-width:' + (isActive?'2':'1.5') + 'px;flex-direction:column;display:flex;align-items:center;justify-content:center" onclick="selectPill(this)">' + iconHtml + '<span>' + c.name + '</span></button>';
-    });
-    container.innerHTML = html;
-  });
-  if (cards.length > 0 && !selectedName) selectedBank = cards[0].name;
+  if (!cardById(selectedCardId)) selectedCardId = cards.length ? cards[0].id : null;
+  var container = document.getElementById('add-bank-pills');
+  if (!container) return;
+  container.innerHTML = cards.map(function(c){ return pillHtml(c, c.id == selectedCardId, 'add-bank-pills'); }).join('');
+}
+
+// 編輯視窗的卡片按鈕。與記帳表單分開——以前開編輯會連帶改掉記帳表單目前選的卡。
+function renderEditPills(cardId) {
+  var cards = data.cards || [];
+  var container = document.getElementById('edit-bank-pills');
+  if (!container) return;
+  container.innerHTML = cards.map(function(c){ return pillHtml(c, c.id == cardId, 'edit-bank-pills'); }).join('');
 }
 
 function selectPill(btn) {
@@ -2634,8 +2649,11 @@ function selectPill(btn) {
     b.style.opacity = '0.5'; b.style.borderWidth = '1.5px';
   });
   btn.style.opacity = '1'; btn.style.borderWidth = '2px';
-  if (pid === 'add-bank-pills') selectedBank = btn.dataset.bank;
-  else editBank = btn.dataset.bank;
+  var cid = btn.getAttribute('data-cid');
+  var c = cardById(cid);
+  if (!c) return;
+  if (pid === 'add-bank-pills') selectedCardId = c.id;
+  else editCardId = c.id;
 }
 
 var selectedCardEmoji = '🌸';
@@ -2676,6 +2694,10 @@ function selectCardPreset(btn) {
 function addCard() {
   var name = document.getElementById('new-card-name').value.trim();
   if (!name) { showToast('⚠️ 請輸入卡片名稱'); return; }
+  // 同名會讓兩張卡在畫面上無法分辨
+  if ((data.cards||[]).some(function(c){ return c.name === name; })) {
+    showToast('⚠️ 已經有一張叫「' + name + '」的卡了'); return;
+  }
   var catKeyIdx = data.cards.length % CAT_KEYS.length;
   var newCatKey = (usesCatCards() && selectedCatKey) ? selectedCatKey : CAT_KEYS[catKeyIdx];
   data.cards.push({ id: mkId(), name: name, emoji: selectedCardEmoji, color: selectedCardColor, textColor: selectedCardTextColor, catKey: newCatKey });
@@ -2688,8 +2710,21 @@ function addCard() {
 
 function removeCard(el) {
   var cid = el.getAttribute('data-cid');
-  data.cards = (data.cards||[]).filter(function(c){ return c.id != cid; });
-  save(); renderSettings(); renderBankPills();
+  var card = cardById(cid);
+  if (!card) return;
+  var n = data.transactions.filter(function(t){ return t.cardId == card.id; }).length;
+  function doRemove() {
+    data.cards = (data.cards||[]).filter(function(c){ return c.id != card.id; });
+    save(); renderSettings(); renderBankPills(); renderAll();
+    showToast('🗑 已刪除「' + card.name + '」' + (n ? '，' + n + ' 筆帳保留' : ''));
+  }
+  if (!n) { doRemove(); return; }
+  showConfirmSheet('刪除「' + esc(card.name) + '」？',
+    '這張卡有 <b>' + n + ' 筆</b>帳。<br><br>刪除後<b>這些帳不會消失</b>，金額照樣算進信用卡支出，只是會顯示為「' + esc(card.name) + '（已刪除的卡）」，月總覽也會另列一行。',
+    [
+      { label: '刪除卡片（保留帳）', style: 'danger', run: doRemove },
+      { label: '取消', run: function(){} }
+    ]);
 }
 
 
