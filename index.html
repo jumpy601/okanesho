@@ -525,7 +525,7 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
 <body>
 
 <div class="toast" id="toast"></div>
-<div id="auth-bar" style="position:fixed;top:0;left:0;right:0;z-index:200;transform:translateZ(0);display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:0.4px;color:var(--text3);flex:0 0 auto">v5.6 卡片改用編號</span><div id="auth-bar-inner" style="display:flex;align-items:center;gap:8px"><button onclick="showLoginModal()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text2)"><span>☁️</span>信箱登入同步</button></div></div>
+<div id="auth-bar" style="position:fixed;top:0;left:0;right:0;z-index:200;transform:translateZ(0);display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:0.4px;color:var(--text3);flex:0 0 auto">v5.7 LINE 記帳</span><div id="auth-bar-inner" style="display:flex;align-items:center;gap:8px"><button onclick="showLoginModal()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text2)"><span>☁️</span>信箱登入同步</button></div></div>
 <div id="sync-status" style="position:fixed;top:34px;right:12px;z-index:199;font-size:11px;color:var(--text3);font-weight:600"></div>
 
 <!-- ══ PAGE: 記帳 ══ -->
@@ -647,6 +647,18 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
       <button onclick="applyTheme('mint')" id="theme-btn-mint" style="flex:1;padding:8px 4px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg2);font-size:14px;cursor:pointer;font-family:inherit;color:var(--text2)">🌊<br><span style="font-size:10px;font-weight:700">薄荷</span></button>
     </div>
   </div>
+  <div style="padding:14px 16px 0">
+    <div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:8px;letter-spacing:0.5px">LINE 記帳</div>
+    <div class="set-card">
+      <div class="set-row">
+        <div id="line-status" style="font-size:13px;margin-bottom:10px"></div>
+        <button id="line-bind-btn" class="data-btn" style="width:100%" onclick="genBindCode()">產生綁定碼</button>
+        <div id="line-bind-code" style="display:none;margin-top:12px"></div>
+        <div style="font-size:11px;color:var(--text3);margin-top:10px;line-height:1.7">綁定後在 LINE 傳「午餐 120」，點按鈕選付款方式就記好了。從 LINE 記的帳會在打開 app 時自動出現。</div>
+      </div>
+    </div>
+  </div>
+
   <div style="padding:14px 16px 0">
     <div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:8px;letter-spacing:0.5px">帳本名稱</div>
     <div class="set-card">
@@ -1817,6 +1829,7 @@ function changeSettingsMonth(delta) {
 function renderSettings() {
   var p = getSettingsPeriod();
   renderAppTitle();
+  renderLineSetting();
   renderCycleSetting();
   renderMonthAllocTypeOptions();
   var extraSection = document.getElementById('extra-income-section');
@@ -2793,6 +2806,8 @@ function updateAuthBar(user) {
       + '<button onclick="signOut()" style="font-size:11px;padding:4px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);cursor:pointer;font-family:inherit;color:var(--text2)">登出</button>';
     loadFromFirebase();
   } else {
+    stopLineListeners();
+    hideBindCode();
     currentUser = null;
     bar.innerHTML = '<button onclick="showLoginModal()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text2)"><span>☁️</span>信箱登入同步</button>';
   }
@@ -2905,13 +2920,13 @@ function doSignOut(wipe) {
 }
 
 function pushToFirebase() {
-  if (!currentUser) return;
-  db.collection('users').doc(currentUser.uid).set({
+  if (!currentUser) return Promise.resolve(false);
+  return db.collection('users').doc(currentUser.uid).set({
     data: JSON.stringify(data),
     theme: currentTheme,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-  }).then(function() { showSyncStatus('☁️ 已同步'); })
-    .catch(function(err) { showSyncStatus('⚠️ 同步失敗：' + (err.code || err.message)); });
+  }).then(function() { showSyncStatus('☁️ 已同步'); return true; })
+    .catch(function(err) { showSyncStatus('⚠️ 同步失敗：' + (err.code || err.message)); return false; });
 }
 
 function saveToFirebase() {
@@ -3028,12 +3043,193 @@ function loadFromFirebase() {
         renderAll();
         renderBankPills();
         showSyncStatus('☁️ 已載入雲端資料');
+        startLineListeners();
       } catch(e) { showSyncStatus('⚠️ 雲端資料格式錯誤'); }
     } else {
       saveToFirebase();
       showSyncStatus('☁️ 已上傳本機資料');
+      startLineListeners();
     }
   }).catch(function(err) { showSyncStatus('⚠️ 載入失敗（' + (err.code || err.message) + '），使用本機資料'); });
+}
+
+// ── LINE 記帳：收件匣 ─────────────────────────────────
+// Bot 只寫 users/{uid}/inbox，從不碰主文件。這裡負責把收件匣搬進帳本。
+//
+// 為什麼不直接拿本機資料當底：app 開著時每收到一筆 LINE 帳都會觸發搬入。
+// 若某個裝置上有個開了很久沒重整的分頁，拿它的舊資料當底推上去，
+// 就會蓋掉你在其他裝置記的帳。所以改成在交易內讀「雲端最新版」→ 套用 → 寫回。
+var _inboxUnsub = null, _lineMetaUnsub = null;
+var _draining = false, _drainAgain = false;
+var lineBound = null;   // null = 尚未得知
+
+// 不動到全域 data 的情況下，對任意物件跑 normalizeData
+function normalizedCopy(obj) {
+  var keep = data;
+  data = obj;
+  try { normalizeData(); return data; } finally { data = keep; }
+}
+
+function applyInboxOps(base, ops) {
+  var added = 0, undone = 0;
+  function has(id) {
+    return base.transactions.some(function(t){ return t.id === id; }) ||
+           base.cashTransactions.some(function(t){ return t.id === id; });
+  }
+  ops.forEach(function(o) {
+    var e = o.e || {};
+    if (e.op === 'add') {
+      if (has(o.id)) return;   // 搬過了（上次刪收件匣失敗）→ 不重複加
+      // 收件匣的資料也要驗證，不盲信
+      var name = String(e.name || '').slice(0, 40);
+      var amount = Number(e.amount);
+      if (!name || !(amount > 0) || !/^\d{4}-\d{2}-\d{2}$/.test(e.date || '')) return;
+      if (e.kind === 'cash') {
+        base.cashTransactions.push({ id: o.id, name: name, amount: amount, date: e.date, src: 'line' });
+      } else {
+        // 記帳到搬入之間卡片被刪了 → 帳照樣保留，以「已刪除的卡」顯示
+        var stillThere = base.cards.some(function(c){ return c.id == e.cardId; });
+        base.transactions.push({ id: o.id, name: name, amount: amount, date: e.date,
+          cardId: stillThere ? e.cardId : null, bank: e.cardName || '', settled: false, src: 'line' });
+      }
+      added++;
+    } else if (e.op === 'undo' && e.target) {
+      var n0 = base.transactions.length + base.cashTransactions.length;
+      base.transactions = base.transactions.filter(function(t){ return t.id !== e.target; });
+      base.cashTransactions = base.cashTransactions.filter(function(t){ return t.id !== e.target; });
+      if (base.transactions.length + base.cashTransactions.length < n0) undone++;
+    }
+  });
+  return { added: added, undone: undone };
+}
+
+function drainInbox() {
+  if (!currentUser) return;
+  if (_draining) { _drainAgain = true; return; }
+  _draining = true;
+  var uid = currentUser.uid;
+  var userRef = db.collection('users').doc(uid);
+  var inbox = userRef.collection('inbox');
+
+  // 1. 本機若有還沒推上去的修改，先推。推不上去就這次先不搬，免得那些修改被覆蓋。
+  var flush = Promise.resolve(true);
+  if (syncTimeout) { clearTimeout(syncTimeout); syncTimeout = null; flush = pushToFirebase(); }
+
+  flush.then(function(ok) {
+    if (!ok) throw { code: 'local-unsynced' };
+    return inbox.orderBy('createdAt').limit(100).get();
+  }).then(function(snap) {
+    if (snap.empty) return null;
+    var ops = [];
+    snap.forEach(function(d){ ops.push({ id: d.id, e: d.data() }); });
+    // 2. 交易：讀雲端最新版 → 套用 → 寫回，期間若有其他裝置寫入會自動重試
+    return db.runTransaction(function(t) {
+      return t.get(userRef).then(function(us) {
+        var raw = (us.exists && us.data().data) ? us.data().data : JSON.stringify(data);
+        var base = normalizedCopy(JSON.parse(raw));
+        var stat = applyInboxOps(base, ops);
+        t.set(userRef, { data: JSON.stringify(base), theme: currentTheme,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+        return { base: base, stat: stat, ids: ops.map(function(o){ return o.id; }) };
+      });
+    });
+  }).then(function(r) {
+    if (!r) return;
+    // 3. 雲端已確定寫入，才更新本機並清空收件匣。
+    //    清空失敗也沒關係：下次搬入時 id 已存在會被略過。
+    data = r.base;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    renderBankPills(); renderAll();
+    if (r.stat.added || r.stat.undone) {
+      showToast('📥 LINE：新增 ' + r.stat.added + ' 筆' + (r.stat.undone ? '、取消 ' + r.stat.undone + ' 筆' : ''));
+    }
+    var b = db.batch();
+    r.ids.forEach(function(id){ b.delete(inbox.doc(id)); });
+    return b.commit();
+  }).catch(function(err) {
+    if (err && err.code === 'local-unsynced') return;
+    showSyncStatus('⚠️ LINE 收件匣：' + (err && (err.code || err.message)));
+  }).then(function() {
+    _draining = false;
+    if (_drainAgain) { _drainAgain = false; drainInbox(); }
+  });
+}
+
+function startLineListeners() {
+  stopLineListeners();
+  if (!currentUser) return;
+  var userRef = db.collection('users').doc(currentUser.uid);
+  _inboxUnsub = userRef.collection('inbox').onSnapshot(function(s) {
+    if (!s.empty) drainInbox();
+  }, function(err) { showSyncStatus('⚠️ LINE 收件匣監聽：' + (err.code || err.message)); });
+  _lineMetaUnsub = userRef.collection('meta').doc('line').onSnapshot(function(s) {
+    lineBound = !!(s.exists && s.data().bound);
+    if (lineBound) hideBindCode();
+    renderLineSetting();
+  }, function() { lineBound = null; renderLineSetting(); });
+}
+function stopLineListeners() {
+  if (_inboxUnsub) { _inboxUnsub(); _inboxUnsub = null; }
+  if (_lineMetaUnsub) { _lineMetaUnsub(); _lineMetaUnsub = null; }
+  lineBound = null;
+}
+
+// ── 綁定碼 ───────────────────────────────────────────
+function genBindCode() {
+  if (!currentUser) { showToast('⚠️ 請先登入才能綁定 LINE'); return; }
+  // 去掉容易看錯的 0/O/1/I
+  var abc = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', code = '';
+  var r = new Uint32Array(6);
+  window.crypto.getRandomValues(r);
+  for (var i = 0; i < 6; i++) code += abc[r[i] % abc.length];
+  db.collection('bindCodes').doc(code).set({
+    uid: currentUser.uid,
+    expiresAt: firebase.firestore.Timestamp.fromMillis(Date.now() + 10 * 60 * 1000)
+  }).then(function() {
+    var box = document.getElementById('line-bind-code');
+    if (!box) return;
+    box.style.display = 'block';
+    box.innerHTML =
+        '<div style="font-size:11px;color:var(--text3);margin-bottom:6px">傳這段文字給おかね帳 Bot（10 分鐘內有效）</div>'
+      + '<div style="display:flex;gap:8px;align-items:center">'
+      + '<div style="flex:1;font-size:22px;font-weight:800;letter-spacing:3px;padding:10px 12px;background:var(--bg);border:1.5px dashed var(--border);border-radius:8px;text-align:center">綁定 ' + code + '</div>'
+      + '<button class="data-btn" style="flex:0 0 auto" onclick="copyBindCode(\'' + code + '\')">複製</button>'
+      + '</div>';
+  }).catch(function(err) {
+    showToast('⚠️ 產生綁定碼失敗：' + (err.code || err.message));
+  });
+}
+function hideBindCode() {
+  var box = document.getElementById('line-bind-code');
+  if (box) { box.style.display = 'none'; box.innerHTML = ''; }
+}
+function copyBindCode(code) {
+  var txt = '綁定 ' + code;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(txt).then(function(){ showToast('📋 已複製'); },
+      function(){ showToast('請長按上面的文字手動複製'); });
+  } else {
+    showToast('請長按上面的文字手動複製');
+  }
+}
+function renderLineSetting() {
+  var st = document.getElementById('line-status');
+  var btn = document.getElementById('line-bind-btn');
+  if (!st || !btn) return;
+  if (!currentUser) {
+    st.innerHTML = '<span style="color:var(--text3)">請先登入，才能綁定 LINE</span>';
+    btn.style.display = 'none';
+    return;
+  }
+  btn.style.display = '';
+  if (lineBound === true) {
+    st.innerHTML = '<span style="color:var(--chart-save);font-weight:700">✅ 已綁定</span>'
+      + '<span style="color:var(--text3)">　在 LINE 傳「解除綁定」可取消</span>';
+    btn.textContent = '重新綁定（換 LINE 帳號時用）';
+  } else {
+    st.innerHTML = '<span style="color:var(--text3)">尚未綁定</span>';
+    btn.textContent = '產生綁定碼';
+  }
 }
 
 function showSyncStatus(msg) {
