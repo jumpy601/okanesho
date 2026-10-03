@@ -1997,7 +1997,7 @@ function realCurrentPeriod() {
   return periodOfDate(t.getFullYear() + '-' + pad(t.getMonth() + 1) + '-' + pad(t.getDate()));
 }
 function scroller() { return document.getElementById('app-scroll') || document.scrollingElement || document.documentElement; }
-var APP_VERSION = 'v6.0 介面優化';   // 唯一來源：左上角與「關於」都讀這裡
+var APP_VERSION = 'v6.1 年圖範圍';   // 唯一來源：左上角與「關於」都讀這裡
 document.addEventListener('DOMContentLoaded', function(){
   var el = document.getElementById('app-version-label');
   if (el) el.textContent = APP_VERSION;
@@ -2771,8 +2771,13 @@ function renderChart() {
   canvas.style.height = H + 'px';
   ctx.scale(dpr, dpr);
 
-  var allVals = incomeData.concat(savingsData).concat(spendingData);
-  var maxVal = Math.max.apply(null, allVals) || 1;
+  // 只顯示到「這個月」：今年 → 到本期為止；過去的年份 → 12 個月；未來的年份 → 沒有資料
+  var rcp = realCurrentPeriod();
+  var lastM = currentChartYear < rcp.year ? 12 : (currentChartYear > rcp.year ? 0 : rcp.month);
+  var nAxis = lastM > 0 ? lastM : 12;   // 未來年份保留 12 個月的空座標軸
+  // 縱軸刻度也只依顯示的月份計算，不讓未來的推算值把整張圖壓扁
+  var allVals = incomeData.slice(0, lastM).concat(savingsData.slice(0, lastM)).concat(spendingData.slice(0, lastM));
+  var maxVal = (allVals.length ? Math.max.apply(null, allVals) : 0) || 1;
   var padT=16, padB=28, padL=52, padR=12;
   var chartW = W - padL - padR;
   var chartH = H - padT - padB;
@@ -2784,8 +2789,6 @@ function renderChart() {
   var cLabel = cvar('--text3', '#A89F8C');
   // 哪些月份「有資料」——沒資料的月份不能當 0 畫進線裡，否則未來月份會讓線摔到底
   // 只畫到「這個月」：未來月份的數字是照設定推算的，畫出來會跟真的一樣，造成誤導
-  var rcp = realCurrentPeriod();
-  var lastM = currentChartYear < rcp.year ? 12 : (currentChartYear > rcp.year ? 0 : rcp.month);
   var hasData = [];
   for (var hi = 0; hi < 12; hi++) {
     hasData.push(hi < lastM && !!(incomeData[hi] || savingsData[hi] || spendingData[hi]));
@@ -2803,8 +2806,10 @@ function renderChart() {
   }
   ctx.fillStyle=cLabel; ctx.textAlign='center'; ctx.font='10px -apple-system,sans-serif';
   var xi;
-  for (xi = 0; xi < 12; xi++) {
-    ctx.fillText(labels[xi], padL+(xi/11)*chartW, H-6);
+  // 橫軸只列到顯示的最後一個月，點平均分布在整個寬度
+  function xPos(i) { return nAxis <= 1 ? padL + chartW / 2 : padL + (i / (nAxis - 1)) * chartW; }
+  for (xi = 0; xi < nAxis; xi++) {
+    ctx.fillText(labels[xi], xPos(xi), H-6);
   }
 
   function drawLine(arr, color, dash) {
@@ -2813,13 +2818,13 @@ function renderChart() {
     if (dash) ctx.setLineDash(dash); else ctx.setLineDash([]);
     for (di=0; di<arr.length; di++) {
       if (!hasData[di]) { started = false; continue; }   // 還沒發生的月份：斷線，不要拉到 0
-      dx = padL+(di/11)*chartW; dy = padT+chartH*(1-arr[di]/maxVal);
+      dx = xPos(di); dy = padT+chartH*(1-arr[di]/maxVal);
       if (!started) { ctx.moveTo(dx,dy); started = true; } else ctx.lineTo(dx,dy);
     }
     ctx.stroke(); ctx.setLineDash([]);
     for (di=0; di<arr.length; di++) {
       if (!hasData[di]) continue;
-      dx=padL+(di/11)*chartW; dy=padT+chartH*(1-arr[di]/maxVal);
+      dx=xPos(di); dy=padT+chartH*(1-arr[di]/maxVal);
       ctx.beginPath(); ctx.arc(dx,dy,3.5,0,Math.PI*2);
       ctx.fillStyle=color; ctx.fill();
     }
