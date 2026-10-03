@@ -311,6 +311,34 @@ input:focus, select:focus {
 .val-blue  { color: var(--sora); }
 
 /* ── SETTINGS ── */
+.sg-label{font-size:11px;color:var(--text3);font-weight:600;letter-spacing:0.5px;margin:18px 20px 6px}
+.sg{margin:0 16px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);overflow:hidden}
+.sg-row{display:flex;align-items:center;gap:10px;width:100%;padding:13px 14px;background:none;border:none;border-top:1px solid var(--border);font-family:inherit;color:var(--text);text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.sg-row:first-child{border-top:none}
+.sg-row:active{background:var(--bg2)}
+.sg-ic{font-size:18px;width:24px;text-align:center;flex:0 0 auto}
+.sg-name{flex:1;font-size:15px;font-weight:600;white-space:nowrap}
+.sg-val{font-size:13px;color:var(--text2);max-width:52%;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sg-val.todo{color:var(--matcha);font-weight:700}
+.sg-chev{color:var(--text3);font-size:20px;line-height:1;flex:0 0 auto}
+#page-settings .sp{display:none}
+#page-settings .sp.active{display:block}
+#page-settings.in-sub #settings-overview{display:none}
+.sp-head{padding:10px 16px 0}
+.sp-back{background:none;border:none;font-family:inherit;font-size:15px;color:var(--matcha);font-weight:700;padding:6px 0;cursor:pointer}
+.sp-title{font-size:20px;font-weight:800;margin:2px 20px 4px;color:var(--text)}
+.sp-desc{font-size:12px;color:var(--text3);margin:0 20px 6px;line-height:1.6}
+.sp-note{font-size:11px;color:var(--text3);margin-top:8px;line-height:1.7}
+.danger-box{margin:14px 16px 0;border:1.5px solid #E2A39B;border-radius:var(--r);overflow:hidden;background:var(--surface)}
+.danger-head{background:#FBEAE8;color:#B23A2E;font-size:12px;font-weight:700;padding:9px 14px}
+.danger-body{padding:12px 14px}
+.danger-btn{color:#B23A2E !important;border-color:#E2A39B !important}
+.setup-card{margin:14px 16px 0;background:var(--surface);border:2px solid var(--matcha);border-radius:var(--r);padding:12px 14px}
+.setup-top{display:flex;justify-content:space-between;align-items:baseline}
+.setup-bar{height:5px;background:var(--bg2);border-radius:3px;margin:8px 0 6px;overflow:hidden}
+.setup-bar>div{height:5px;background:var(--matcha);border-radius:3px}
+.setup-item{display:flex;align-items:center;gap:8px;width:100%;padding:8px 0;background:none;border:none;font-family:inherit;color:var(--text);font-size:14px;text-align:left;cursor:pointer}
+.setup-item.done{color:var(--text3);text-decoration:line-through}
 .set-card {
   margin: 8px 16px 0;
   background: var(--surface); border-radius: var(--r);
@@ -525,7 +553,7 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
 <body>
 
 <div class="toast" id="toast"></div>
-<div id="auth-bar" style="position:fixed;top:0;left:0;right:0;z-index:200;transform:translateZ(0);display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border-bottom:1px solid var(--border)"><span style="font-size:10px;font-weight:700;letter-spacing:0.4px;color:var(--text3);flex:0 0 auto">v5.7 LINE 記帳</span><div id="auth-bar-inner" style="display:flex;align-items:center;gap:8px"><button onclick="showLoginModal()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text2)"><span>☁️</span>信箱登入同步</button></div></div>
+<div id="auth-bar" style="position:fixed;top:0;left:0;right:0;z-index:200;transform:translateZ(0);display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 14px;background:var(--surface);border-bottom:1px solid var(--border)"><span id="app-version-label" style="font-size:10px;font-weight:700;letter-spacing:0.4px;color:var(--text3);flex:0 0 auto"></span><div id="auth-bar-inner" style="display:flex;align-items:center;gap:8px"><button onclick="showLoginModal()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text2)"><span>☁️</span>信箱登入同步</button></div></div>
 <div id="sync-status" style="position:fixed;top:34px;right:12px;z-index:199;font-size:11px;color:var(--text3);font-weight:600"></div>
 
 <!-- ══ PAGE: 記帳 ══ -->
@@ -637,70 +665,38 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
   </div>
   <div class="washi"></div>
 
-  <!-- Settings sub-tabs -->
-  <div style="padding:12px 16px 0">
-    <div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:8px;letter-spacing:0.5px">主題</div>
-    <div style="display:flex;gap:6px">
-      <button onclick="applyTheme('jp')" id="theme-btn-jp" style="flex:1;padding:8px 4px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg2);font-size:14px;cursor:pointer;font-family:inherit;color:var(--text2)">🌿<br><span style="font-size:10px;font-weight:700">日式</span></button>
-      <button onclick="applyTheme('cat')" id="theme-btn-cat" style="flex:1;padding:8px 4px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg2);font-size:14px;cursor:pointer;font-family:inherit;color:var(--text2)">🐱<br><span style="font-size:10px;font-weight:700">貓咪</span></button>
-      <button onclick="applyTheme('coral')" id="theme-btn-coral" style="flex:1;padding:8px 4px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg2);font-size:14px;cursor:pointer;font-family:inherit;color:var(--text2)">🪸<br><span style="font-size:10px;font-weight:700">珊瑚</span></button>
-      <button onclick="applyTheme('mint')" id="theme-btn-mint" style="flex:1;padding:8px 4px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg2);font-size:14px;cursor:pointer;font-family:inherit;color:var(--text2)">🌊<br><span style="font-size:10px;font-weight:700">薄荷</span></button>
+  <div id="settings-overview">
+    <div id="setup-checklist"></div>
+    <div class="sg-label">每月預算</div>
+    <div class="sg">
+      <button class="sg-row" onclick="openSub('budget')"><span class="sg-ic">💴</span><span class="sg-name">薪水與分配</span><span class="sg-val" id="ov-budget"></span><span class="sg-chev">›</span></button>
+      <button class="sg-row" onclick="openSub('fixed')"><span class="sg-ic">📌</span><span class="sg-name">固定預算</span><span class="sg-val" id="ov-fixed"></span><span class="sg-chev">›</span></button>
+      <button class="sg-row" onclick="openSub('budget', 'extra')"><span class="sg-ic">🎁</span><span class="sg-name">額外收入</span><span class="sg-val" id="ov-extra"></span><span class="sg-chev">›</span></button>
     </div>
-  </div>
-  <div style="padding:14px 16px 0">
-    <div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:8px;letter-spacing:0.5px">LINE 記帳</div>
-    <div class="set-card">
-      <div class="set-row">
-        <div id="line-status" style="font-size:13px;margin-bottom:10px"></div>
-        <button id="line-bind-btn" class="data-btn" style="width:100%" onclick="genBindCode()">產生綁定碼</button>
-        <div id="line-bind-code" style="display:none;margin-top:12px"></div>
-        <div style="font-size:11px;color:var(--text3);margin-top:10px;line-height:1.7">綁定後在 LINE 傳「午餐 120」，點按鈕選付款方式就記好了。從 LINE 記的帳會在打開 app 時自動出現。</div>
-      </div>
+    <div class="sg-label">帳本</div>
+    <div class="sg">
+      <button class="sg-row" onclick="openSub('cards')"><span class="sg-ic">💳</span><span class="sg-name">信用卡</span><span class="sg-val" id="ov-cards"></span><span class="sg-chev">›</span></button>
+      <button class="sg-row" onclick="openSub('cycle')"><span class="sg-ic">📅</span><span class="sg-name">結算日</span><span class="sg-val" id="ov-cycle"></span><span class="sg-chev">›</span></button>
+      <button class="sg-row" onclick="openSub('settle')"><span class="sg-ic">🏦</span><span class="sg-name">卡費匯款</span><span class="sg-val" id="ov-settle"></span><span class="sg-chev">›</span></button>
+      <button class="sg-row" onclick="openSub('name')"><span class="sg-ic">📒</span><span class="sg-name">帳本名稱</span><span class="sg-val" id="ov-name"></span><span class="sg-chev">›</span></button>
     </div>
-  </div>
-
-  <div style="padding:14px 16px 0">
-    <div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:8px;letter-spacing:0.5px">帳本名稱</div>
-    <div class="set-card">
-      <div class="set-row">
-        <div class="set-row-bottom">
-          <input type="text" id="app-emoji-input" maxlength="4" placeholder="📒" onchange="handleAppEmoji(this)"
-            style="width:56px;flex:0 0 auto;text-align:center;padding:9px 4px;border:1.5px solid var(--border);border-radius:8px;font-size:18px;font-family:inherit;background:var(--bg)">
-          <input type="text" id="app-title-input" maxlength="16" placeholder="おかね帳" onchange="handleAppTitle(this)"
-            style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;font-weight:700;font-family:inherit;background:var(--bg);color:var(--text)">
-        </div>
-        <div style="font-size:11px;color:var(--text3);margin-top:8px;line-height:1.7">顯示在記帳頁最上方。留白會用預設的「📒 おかね帳」。<br>已加到主畫面的圖示名稱來自 manifest.json，不會跟著改。</div>
-      </div>
+    <div class="sg-label">連結與外觀</div>
+    <div class="sg">
+      <button class="sg-row" onclick="openSub('line')"><span class="sg-ic">💬</span><span class="sg-name">LINE 記帳</span><span class="sg-val" id="ov-line"></span><span class="sg-chev">›</span></button>
+      <button class="sg-row" onclick="openSub('theme')"><span class="sg-ic">🎨</span><span class="sg-name">主題</span><span class="sg-val" id="ov-theme"></span><span class="sg-chev">›</span></button>
     </div>
+    <div class="sg-label">資料</div>
+    <div class="sg">
+      <button class="sg-row" onclick="openSub('data')"><span class="sg-ic">💾</span><span class="sg-name">備份與還原</span><span class="sg-val" id="ov-data"></span><span class="sg-chev">›</span></button>
+      <button class="sg-row" onclick="openSub('about')"><span class="sg-ic">ℹ️</span><span class="sg-name">關於</span><span class="sg-val" id="ov-about"></span><span class="sg-chev">›</span></button>
+    </div>
+    <div style="height:20px"></div>
   </div>
 
-  <div style="padding:14px 16px 0">
-    <div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:8px;letter-spacing:0.5px">帳務週期</div>
-    <div class="set-card">
-      <div class="set-row">
-        <div class="set-row-top"><div class="set-name">📅 每月結算起始日</div></div>
-        <div class="set-row-bottom">
-          <select id="cycle-start-day" onchange="handleCycleDayChange(this)" style="flex:1;font-weight:700;font-size:15px;background:var(--bg);border:1.5px solid var(--border);border-radius:7px;padding:8px 12px;font-family:inherit;color:var(--text)"></select>
-          <span style="font-size:13px;color:var(--text2);flex:0 0 auto">日開始</span>
-        </div>
-        <div id="cycle-preview" style="font-size:11px;color:var(--text3);margin-top:10px;line-height:1.7"></div>
-      </div>
-      <div class="set-row">
-        <div class="set-row-top">
-          <div class="set-name">🏦 信用卡結算</div>
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer">
-            <span>使用</span>
-            <input type="checkbox" id="settle-enabled" onchange="handleSettleEnabled(this)" style="width:18px;height:18px;accent-color:var(--matcha)">
-          </label>
-        </div>
-        <div class="set-row-bottom">
-          <input type="text" id="settle-bank" placeholder="匯款銀行（例：兆豐）" onchange="handleSettleBank(this)"
-            style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;background:var(--bg);color:var(--text)">
-        </div>
-        <div id="settle-hint" style="font-size:11px;color:var(--text3);margin-top:8px;line-height:1.7"></div>
-      </div>
-    </div>
-  </div>
+  <div class="sp" id="sp-budget">
+    <div class="sp-head"><button class="sp-back" onclick="closeSub()">‹ 設定</button></div>
+    <div class="sp-title">💴 薪水與分配</div>
+    <div class="sp-desc">「預設值」是每個月都套用的金額；「當月調整」只改某一個月。</div>
   <div style="display:flex;gap:0;margin:12px 16px 0;border:1.5px solid var(--border);border-radius:9px;overflow:hidden;background:var(--bg2)">
     <button id="stab-default" onclick="switchSettingsTab('default')" style="flex:1;padding:8px;font-size:13px;font-weight:700;border:none;cursor:pointer;background:var(--matcha);color:white;font-family:inherit">📋 預設值</button>
     <button id="stab-month" onclick="switchSettingsTab('month')" style="flex:1;padding:8px;font-size:13px;font-weight:700;border:none;cursor:pointer;background:transparent;color:var(--text2);font-family:inherit">📅 當月調整</button>
@@ -765,8 +761,29 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
     </div>
   </div>
   </div><!-- /extra-income-section -->
+    <div style="height:20px"></div>
+  </div>
 
-  <div class="section-label">💳 信用卡</div>
+  <div class="sp" id="sp-fixed">
+    <div class="sp-head"><button class="sp-back" onclick="closeSub()">‹ 設定</button></div>
+    <div class="sp-title">📌 固定預算</div>
+    <div class="sp-desc">每個月固定會花的錢，只當參考，不會從本期餘額扣掉。</div>
+  
+  <div class="set-card">
+    <div id="fixed-expense-list"></div>
+    <div class="add-row">
+      <input type="text" id="new-expense-name" placeholder="項目名稱">
+      <input type="number" id="new-expense-amount" placeholder="金額" class="w-amt" inputmode="decimal">
+      <button class="btn-sm" onclick="addFixedExpense()">新增</button>
+    </div>
+  </div>
+    <div style="height:20px"></div>
+  </div>
+
+  <div class="sp" id="sp-cards">
+    <div class="sp-head"><button class="sp-back" onclick="closeSub()">‹ 設定</button></div>
+    <div class="sp-title">💳 信用卡</div>
+    <div class="sp-desc">記帳時可以選的卡片。</div>
   <div class="set-card">
     <div id="cards-list"></div>
     <div style="padding:12px 14px;border-top:1.5px dashed var(--border)">
@@ -807,33 +824,126 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
       </div>
     </div>
   </div>
-
-  <div class="section-label">📌 固定預算</div>
-  <div class="set-card">
-    <div id="fixed-expense-list"></div>
-    <div class="add-row">
-      <input type="text" id="new-expense-name" placeholder="項目名稱">
-      <input type="number" id="new-expense-amount" placeholder="金額" class="w-amt" inputmode="decimal">
-      <button class="btn-sm" onclick="addFixedExpense()">新增</button>
-    </div>
+    <div style="height:20px"></div>
   </div>
 
-
-
-  <div class="section-label">💾 資料管理</div>
-  <div class="set-card">
-    <div style="display:flex;gap:10px;padding:14px">
-      <button class="data-btn" onclick="exportData()">📤 匯出備份</button>
-      <button class="data-btn" onclick="document.getElementById('import-file').click()">📥 匯入備份</button>
-      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+  <div class="sp" id="sp-cycle">
+    <div class="sp-head"><button class="sp-back" onclick="closeSub()">‹ 設定</button></div>
+    <div class="sp-title">📅 結算日</div>
+    <div class="sp-desc">每個月從哪一天開始算新的一期，通常設成發薪日。</div>
+    <div class="set-card">
+      <div class="set-row">
+        <div class="set-row-top"><div class="set-name">📅 每月結算起始日</div></div>
+        <div class="set-row-bottom">
+          <select id="cycle-start-day" onchange="handleCycleDayChange(this)" style="flex:1;font-weight:700;font-size:15px;background:var(--bg);border:1.5px solid var(--border);border-radius:7px;padding:8px 12px;font-family:inherit;color:var(--text)"></select>
+          <span style="font-size:13px;color:var(--text2);flex:0 0 auto">日開始</span>
+        </div>
+        <div id="cycle-preview" style="font-size:11px;color:var(--text3);margin-top:10px;line-height:1.7"></div>
+      </div>
     </div>
-    <div style="padding:0 14px 14px">
-      <button class="data-btn" style="width:100%" onclick="undoImport()">⏪ 復原匯入前</button>
-      <button class="data-btn" style="width:100%;margin-top:8px" onclick="showViewportDiag()">🔧 版面診斷</button>
-      <div style="font-size:11px;color:var(--text3);margin-top:8px;line-height:1.5">匯入備份前會自動保留一份匯入前的資料，選錯檔案時按上面這顆就能還原。</div>
-    </div>
+    <div style="height:20px"></div>
   </div>
-  <div style="height:12px"></div>
+
+  <div class="sp" id="sp-settle">
+    <div class="sp-head"><button class="sp-back" onclick="closeSub()">‹ 設定</button></div>
+    <div class="sp-title">🏦 卡費匯款</div>
+    <div class="sp-desc">如果你每週會把卡費轉到另一個帳戶，可以在記帳頁標記「已匯款」。不需要的話關掉就好。</div>
+    <div class="set-card">
+      <div class="set-row">
+        <div class="set-row-top">
+          <div class="set-name">🏦 信用卡結算</div>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer">
+            <span>使用</span>
+            <input type="checkbox" id="settle-enabled" onchange="handleSettleEnabled(this)" style="width:18px;height:18px;accent-color:var(--matcha)">
+          </label>
+        </div>
+        <div class="set-row-bottom">
+          <input type="text" id="settle-bank" placeholder="匯款銀行（例：兆豐）" onchange="handleSettleBank(this)"
+            style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;background:var(--bg);color:var(--text)">
+        </div>
+        <div id="settle-hint" style="font-size:11px;color:var(--text3);margin-top:8px;line-height:1.7"></div>
+      </div>
+    </div>
+    <div style="height:20px"></div>
+  </div>
+
+  <div class="sp" id="sp-name">
+    <div class="sp-head"><button class="sp-back" onclick="closeSub()">‹ 設定</button></div>
+    <div class="sp-title">📒 帳本名稱</div>
+<div class="set-card">
+      <div class="set-row">
+        <div class="set-row-bottom">
+          <input type="text" id="app-emoji-input" maxlength="4" placeholder="📒" onchange="handleAppEmoji(this)"
+            style="width:56px;flex:0 0 auto;text-align:center;padding:9px 4px;border:1.5px solid var(--border);border-radius:8px;font-size:18px;font-family:inherit;background:var(--bg)">
+          <input type="text" id="app-title-input" maxlength="16" placeholder="おかね帳" onchange="handleAppTitle(this)"
+            style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;font-weight:700;font-family:inherit;background:var(--bg);color:var(--text)">
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:8px;line-height:1.7">顯示在記帳頁最上方。留白會用預設的「📒 おかね帳」。<br>已加到主畫面的圖示名稱來自 manifest.json，不會跟著改。</div>
+      </div>
+    </div>
+    <div style="height:20px"></div>
+  </div>
+
+  <div class="sp" id="sp-line">
+    <div class="sp-head"><button class="sp-back" onclick="closeSub()">‹ 設定</button></div>
+    <div class="sp-title">💬 LINE 記帳</div>
+<div class="set-card">
+      <div class="set-row">
+        <div id="line-status" style="font-size:13px;margin-bottom:10px"></div>
+        <button id="line-bind-btn" class="data-btn" style="width:100%" onclick="genBindCode()">產生綁定碼</button>
+        <div id="line-bind-code" style="display:none;margin-top:12px"></div>
+        <div style="font-size:11px;color:var(--text3);margin-top:10px;line-height:1.7">綁定後在 LINE 傳「午餐 120」，點按鈕選付款方式就記好了。從 LINE 記的帳會在打開 app 時自動出現。</div>
+      </div>
+    </div>
+    <div style="height:20px"></div>
+  </div>
+
+  <div class="sp" id="sp-theme">
+    <div class="sp-head"><button class="sp-back" onclick="closeSub()">‹ 設定</button></div>
+    <div class="sp-title">🎨 主題</div>
+    <div style="padding:14px 16px 0"><div style="display:flex;gap:6px">
+      <button onclick="applyTheme('jp')" id="theme-btn-jp" style="flex:1;padding:8px 4px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg2);font-size:14px;cursor:pointer;font-family:inherit;color:var(--text2)">🌿<br><span style="font-size:10px;font-weight:700">日式</span></button>
+      <button onclick="applyTheme('cat')" id="theme-btn-cat" style="flex:1;padding:8px 4px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg2);font-size:14px;cursor:pointer;font-family:inherit;color:var(--text2)">🐱<br><span style="font-size:10px;font-weight:700">貓咪</span></button>
+      <button onclick="applyTheme('coral')" id="theme-btn-coral" style="flex:1;padding:8px 4px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg2);font-size:14px;cursor:pointer;font-family:inherit;color:var(--text2)">🪸<br><span style="font-size:10px;font-weight:700">珊瑚</span></button>
+      <button onclick="applyTheme('mint')" id="theme-btn-mint" style="flex:1;padding:8px 4px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg2);font-size:14px;cursor:pointer;font-family:inherit;color:var(--text2)">🌊<br><span style="font-size:10px;font-weight:700">薄荷</span></button>
+    </div>
+    </div>
+    <div style="height:20px"></div>
+  </div>
+
+  <div class="sp" id="sp-data">
+    <div class="sp-head"><button class="sp-back" onclick="closeSub()">‹ 設定</button></div>
+    <div class="sp-title">💾 備份與還原</div>
+    <div class="set-card"><div class="set-row" style="border-bottom:none">
+      <button class="data-btn" style="width:100%" onclick="exportData()">📤 匯出備份</button>
+      <div class="sp-note">下載一份完整的帳本檔案。偶爾存一份，換手機或出狀況時用得到。</div>
+    </div></div>
+    <div class="danger-box">
+      <div class="danger-head">⚠️ 以下操作會覆蓋目前的資料</div>
+      <div class="danger-body">
+        <button class="data-btn danger-btn" style="width:100%" onclick="document.getElementById('import-file').click()">📥 匯入備份</button>
+        <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+        <button class="data-btn danger-btn" style="width:100%;margin-top:8px" onclick="undoImport()">⏪ 復原匯入前</button>
+        <div class="sp-note">匯入前會自動保留一份匯入前的資料。選錯檔案時，按「復原匯入前」就能還原。</div>
+      </div>
+    </div>
+    <div style="height:20px"></div>
+  </div>
+
+  <div class="sp" id="sp-about">
+    <div class="sp-head"><button class="sp-back" onclick="closeSub()">‹ 設定</button></div>
+    <div class="sp-title">ℹ️ 關於</div>
+    <div class="set-card">
+      <div class="set-row" style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:14px;font-weight:600">版本</span><span id="about-version" style="font-size:13px;color:var(--text2)"></span>
+      </div>
+      <div class="set-row" style="border-bottom:none">
+        <button class="data-btn" style="width:100%" onclick="showViewportDiag()">🔧 版面診斷</button>
+        <div class="sp-note">畫面顯示不正常時，把這裡的診斷結果截圖給開發者。</div>
+      </div>
+    </div>
+    <div style="height:20px"></div>
+  </div>
 </div>
 
 <!-- ══ PAGE: 年圖 ══ -->
@@ -1031,8 +1141,7 @@ function applyTheme(theme) {
   });
   renderBankPills();
   fillCatPillSvgs();
-  var extraSection = document.getElementById('extra-income-section');
-  if (extraSection) extraSection.style.display = 'block';
+  if (typeof renderSettingsOverview === 'function') renderSettingsOverview();
   if (typeof saveToFirebase === 'function') saveToFirebase();
 }
 
@@ -1826,12 +1935,134 @@ function changeSettingsMonth(delta) {
   renderSettings();
 }
 
+// ── 設定頁：總覽 → 子頁（最多兩層）────────────────────
+var APP_VERSION = 'v5.8 設定改版';   // 唯一來源：左上角與「關於」都讀這裡
+document.addEventListener('DOMContentLoaded', function(){
+  var el = document.getElementById('app-version-label');
+  if (el) el.textContent = APP_VERSION;
+});
+var currentSub = null, overviewScrollY = 0;
+var THEME_NAMES = { jp: '日式', cat: '貓咪', coral: '珊瑚', mint: '薄荷' };
+
+function headerOffset() {
+  var hd = document.querySelector('#page-settings .page-header');
+  return hd ? hd.offsetHeight : 0;
+}
+function openSub(name, focus) {
+  var sp = document.getElementById('sp-' + name);
+  if (!sp) return;
+  if (!currentSub) overviewScrollY = window.scrollY;
+  document.querySelectorAll('#page-settings .sp').forEach(function(el){ el.classList.remove('active'); });
+  sp.classList.add('active');
+  document.getElementById('page-settings').classList.add('in-sub');
+  currentSub = name;
+  // 只在記憶體標記「看過了」，不存檔：打開頁面不應該觸發寫入與雲端同步。
+  // 之後任何一次正常存檔時會一起保存。
+  if (name === 'cards') data.setupCardsReviewed = true;
+  if (name === 'budget' && focus === 'extra') {
+    // 額外收入跟著「當月調整」的月份切換，所以直接帶到那一段，而不是另開一頁
+    settingsMonthOffset = 0;
+    switchSettingsTab('month');
+    renderSettings();
+    setTimeout(function(){
+      var el = document.getElementById('extra-income-section');
+      if (el) window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - headerOffset() - 8);
+    }, 30);
+  } else {
+    window.scrollTo(0, 0);
+  }
+}
+function closeSub() {
+  if (!currentSub) return;
+  document.getElementById('page-settings').classList.remove('in-sub');
+  document.querySelectorAll('#page-settings .sp').forEach(function(el){ el.classList.remove('active'); });
+  currentSub = null;
+  renderSettingsOverview();
+  window.scrollTo(0, overviewScrollY);
+}
+
+// 新手清單：必要的只有兩項（薪水、信用卡），LINE 選填。完成或關閉後就不再出現。
+function setupState() {
+  var cur = getCurrentPeriod();
+  var salary = data.budgetAllocs.filter(function(a){ return a.isIncome || a.allocType === 'income'; })
+    .reduce(function(s, a){ return s + getAllocAmount(a.id, cur); }, 0);
+  var cards = data.cards || [];
+  var untouchedDefault = cards.length === 1 && cards[0].name === '信用卡' && cards[0].id == 1;
+  return {
+    salary: salary > 0,
+    cards: !!data.setupCardsReviewed || (cards.length > 0 && !untouchedDefault),
+    line: lineBound === true
+  };
+}
+function dismissSetup() { data.setupDismissed = true; save(); renderSettingsOverview(); }
+
+function renderSetupChecklist() {
+  var box = document.getElementById('setup-checklist');
+  if (!box) return;
+  var st = setupState();
+  // 已登入但雲端資料還沒載入完：畫面上是預設帳本，會被誤判成新手，先不顯示
+  if (currentUser && !cloudReady) { box.innerHTML = ''; return; }
+  if (data.setupDismissed || (st.salary && st.cards)) { box.innerHTML = ''; return; }
+  var done = (st.salary ? 1 : 0) + (st.cards ? 1 : 0);
+  function item(ok, label, sub, optional) {
+    return '<button class="setup-item' + (ok ? ' done' : '') + '" onclick="openSub(\'' + sub + '\')">'
+      + '<span style="font-size:17px;flex:0 0 auto">' + (ok ? '✅' : (optional ? '⚪' : '⭕')) + '</span>'
+      + '<span style="flex:1">' + label + (optional ? '<span style="color:var(--text3);font-size:12px">（選填）</span>' : '') + '</span>'
+      + (ok ? '' : '<span class="sg-chev">›</span>') + '</button>';
+  }
+  box.innerHTML = '<div class="setup-card">'
+    + '<div class="setup-top"><span style="font-size:15px;font-weight:800">開始使用</span>'
+    + '<span style="font-size:12px;color:var(--matcha);font-weight:700">' + done + ' / 2 完成</span></div>'
+    + '<div class="setup-bar"><div style="width:' + (done * 50) + '%"></div></div>'
+    + item(st.salary, '填寫每月薪水', 'budget')
+    + item(st.cards, '設定你的信用卡', 'cards')
+    + item(st.line, '綁定 LINE 記帳', 'line', true)
+    + '<button onclick="dismissSetup()" style="background:none;border:none;font-family:inherit;font-size:12px;color:var(--text3);padding:6px 0 0;cursor:pointer">先不用，關閉這個清單</button>'
+    + '</div>';
+}
+
+// 總覽頁每一列顯示「目前的值」，不用點進去也看得到設定狀態
+function renderSettingsOverview() {
+  if (!document.getElementById('ov-budget')) return;
+  function set(id, text, todo) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = text;
+    el.classList.toggle('todo', !!todo);
+  }
+  var cur = getCurrentPeriod();
+  var incomes = data.budgetAllocs.filter(function(a){ return a.isIncome || a.allocType === 'income'; });
+  var salary = incomes.reduce(function(s, a){ return s + getAllocAmount(a.id, cur); }, 0);
+  var nAlloc = data.budgetAllocs.length - incomes.length;
+  set('ov-budget', salary > 0 ? '$' + salary.toLocaleString() + '・' + nAlloc + ' 項' : '尚未填寫', salary <= 0);
+
+  var fx = getFixedExpensesForPeriod(cur).filter(function(e){ return e.included !== false; });
+  var fxSum = fx.reduce(function(s, e){ return s + (e.amount || 0); }, 0);
+  set('ov-fixed', fx.length + ' 項・$' + fxSum.toLocaleString());
+
+  var nExtra = (data.extraIncomes || []).filter(function(e){ return inPeriod(e, cur); }).length;
+  set('ov-extra', nExtra ? '本期 ' + nExtra + ' 筆' : '本期沒有');
+
+  set('ov-cards', (data.cards || []).length + ' 張');
+  set('ov-cycle', '每月 ' + cycleDay() + ' 日');
+  set('ov-settle', settleEnabled() ? settleBankName() : '不使用');
+  set('ov-name', appTitle());
+  set('ov-line', lineBound === true ? '已綁定' : (currentUser ? '未綁定' : '需先登入'));
+  set('ov-theme', THEME_NAMES[currentTheme] || '');
+  set('ov-data', '');
+  set('ov-about', APP_VERSION.split(' ')[0]);
+  var av = document.getElementById('about-version');
+  if (av) av.textContent = APP_VERSION;
+  renderSetupChecklist();
+}
+
 function renderSettings() {
   var p = getSettingsPeriod();
   renderAppTitle();
   renderLineSetting();
   renderCycleSetting();
   renderMonthAllocTypeOptions();
+  setTimeout(renderSettingsOverview, 0);
   var extraSection = document.getElementById('extra-income-section');
   if (extraSection) extraSection.style.display = (currentSettingsTab === 'month') ? 'block' : 'none';
   setTimeout(updateDefaultRemainLabel, 50);
@@ -2742,6 +2973,8 @@ function removeCard(el) {
 
 
 function switchTab(tab) {
+  var settingsActive = document.getElementById('page-settings').classList.contains('active');
+  if (tab === 'settings' && settingsActive && currentSub) { closeSub(); return; }
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active');});
   document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
   document.getElementById('page-'+tab).classList.add('active');
@@ -2784,6 +3017,10 @@ firebase.initializeApp(firebaseConfig);
 var db = firebase.firestore();
 var auth = firebase.auth();
 var currentUser = null;
+// 登入後到「第一次雲端載入有結果」之前為 false。
+// 這段期間本機可能還是空白的預設帳本，若此時推上雲端會蓋掉真正的資料。
+var cloudReady = false;
+var pushWhileLoading = false;
 var syncTimeout = null;
 
 function updateAuthBar(user) {
@@ -2792,6 +3029,7 @@ function updateAuthBar(user) {
   if (!bar) { setTimeout(function(){ updateAuthBar(user); }, 100); return; }
   if (user) {
     currentUser = user;
+    cloudReady = false; pushWhileLoading = false;
     // 換帳號防汙染：雲端沒有文件時 loadFromFirebase 會把「本機現況」推上去。
     // 若本機殘留的是上一個帳號的資料，就會汙染新帳號——先清乾淨再同步。
     var lastUid = localStorage.getItem(LAST_UID_KEY);
@@ -2809,6 +3047,7 @@ function updateAuthBar(user) {
     stopLineListeners();
     hideBindCode();
     currentUser = null;
+    cloudReady = false; pushWhileLoading = false;
     bar.innerHTML = '<button onclick="showLoginModal()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--surface);cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;color:var(--text2)"><span>☁️</span>信箱登入同步</button>';
   }
 }
@@ -2899,7 +3138,7 @@ function doSignOut(wipe) {
   // 那些變更永遠上不了雲端，下次登入又被雲端舊版蓋掉 = 靜默掉資料。
   var pending = null;
   if (syncTimeout) { clearTimeout(syncTimeout); syncTimeout = null; }
-  if (currentUser) {
+  if (currentUser && cloudReady) {
     pending = db.collection('users').doc(currentUser.uid).set({
       data: JSON.stringify(data),
       theme: currentTheme,
@@ -2931,6 +3170,7 @@ function pushToFirebase() {
 
 function saveToFirebase() {
   if (!currentUser) return;
+  if (!cloudReady) { pushWhileLoading = true; return; }   // 載入中：先記下，不推
   clearTimeout(syncTimeout);
   syncTimeout = setTimeout(function() { syncTimeout = null; pushToFirebase(); }, 1500);
 }
@@ -3039,6 +3279,7 @@ function loadFromFirebase() {
         data = JSON.parse(doc.data().data);
         normalizeData();
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        cloudReady = true; pushWhileLoading = false;
         if (doc.data().theme) applyTheme(doc.data().theme);
         renderAll();
         renderBankPills();
@@ -3046,11 +3287,16 @@ function loadFromFirebase() {
         startLineListeners();
       } catch(e) { showSyncStatus('⚠️ 雲端資料格式錯誤'); }
     } else {
+      cloudReady = true; pushWhileLoading = false;
       saveToFirebase();
       showSyncStatus('☁️ 已上傳本機資料');
       startLineListeners();
     }
-  }).catch(function(err) { showSyncStatus('⚠️ 載入失敗（' + (err.code || err.message) + '），使用本機資料'); });
+  }).catch(function(err) {
+    showSyncStatus('⚠️ 載入失敗（' + (err.code || err.message) + '），使用本機資料');
+    cloudReady = true;
+    if (pushWhileLoading) { pushWhileLoading = false; saveToFirebase(); }
+  });
 }
 
 // ── LINE 記帳：收件匣 ─────────────────────────────────
@@ -3213,6 +3459,7 @@ function copyBindCode(code) {
   }
 }
 function renderLineSetting() {
+  if (typeof renderSettingsOverview === 'function') setTimeout(renderSettingsOverview, 0);
   var st = document.getElementById('line-status');
   var btn = document.getElementById('line-bind-btn');
   if (!st || !btn) return;
