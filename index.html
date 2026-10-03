@@ -214,7 +214,6 @@ input:focus, select:focus {
   width: fit-content;
 }
 .badge-settled { background: var(--matcha-l); color: var(--matcha); }
-.badge-pending { background: var(--kinari-l); color: var(--kinari); }
 .week-total { font-size: 19px; font-weight: 700; letter-spacing: -0.5px; }
 
 .settle-btn {
@@ -248,14 +247,16 @@ input:focus, select:focus {
 .tx-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tx-meta { font-size: 11px; color: var(--text3); margin-top: 1px; }
 .tx-amount { font-size: 15px; font-weight: 700; flex-shrink: 0; }
-.tx-actions { display: flex; gap: 4px; flex-shrink: 0; }
-.tx-btn {
-  width: 28px; height: 28px; border-radius: 7px; border: none;
-  cursor: pointer; display: flex; align-items: center; justify-content: center;
-  font-size: 14px; background: var(--bg2); transition: background 0.15s;
-}
-.tx-btn:active { opacity: 0.7; }
-.tx-btn.del { background: var(--sakura-l); }
+/* 整列可點：點了就編輯，刪除移到編輯視窗裡 */
+.tx-item.tappable { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.tx-item.tappable:active { background: var(--bg2); }
+.tx-chev { color: var(--text3); font-size: 20px; line-height: 1; flex-shrink: 0; margin-left: -2px; }
+/* 編輯視窗裡的刪除：和儲存分開放在最下面 */
+.modal-del-wrap { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); text-align: center; }
+.modal-del { background: none; border: none; font-family: inherit; font-size: 14px; font-weight: 700; color: #B23A2E; padding: 8px 16px; cursor: pointer; }
+/* 可復原的提示 */
+.toast.actionable { pointer-events: auto; }
+.toast-undo { background: none; border: none; color: #FFD48A; font-family: inherit; font-size: 13px; font-weight: 800; padding: 0 0 0 10px; cursor: pointer; }
 
 /* ── OVERVIEW ── */
 .period-nav {
@@ -288,7 +289,6 @@ input:focus, select:focus {
 }
 .hero-label { font-size: 11px; opacity: 0.8; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
 .hero-amount { font-size: 34px; font-weight: 700; letter-spacing: -1px; margin: 4px 0 2px; }
-.hero-period { font-size: 11px; opacity: 0.65; }
 .hero-cols { display: flex; gap: 0; margin-top: 16px; }
 .hero-col { flex: 1; padding: 10px 0; border-right: 1px solid rgba(255,255,255,0.2); text-align: center; }
 .hero-col:last-child { border-right: none; }
@@ -1107,6 +1107,7 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
       <button class="btn-cancel" onclick="closeEditModal()">取消</button>
       <button class="btn-confirm" onclick="saveEdit()">儲存</button>
     </div>
+    <div class="modal-del-wrap"><button class="modal-del" onclick="deleteFromEdit()">🗑 刪除這筆</button></div>
   </div>
 </div>
 
@@ -1606,10 +1607,10 @@ function renderSearch() {
   hits.forEach(function(x){
     var t = x.t, isCash = x.kind === 'cash';
     var pOf = periodOfDate(t.date);
-    html += '<div class="tx-item"><div class="tx-bank-badge" style="background:var(--kinari-l)">' + (isCash ? '💵' : '💳') + '</div>';
+    html += '<div class="tx-item tappable" data-txid="' + esc(String(t.id)) + '" onclick="' + (isCash ? 'openCashEditById' : 'openEditById') + '(this)"><div class="tx-bank-badge" style="background:var(--kinari-l)">' + (isCash ? '💵' : '💳') + '</div>';
     html += '<div class="tx-info"><div class="tx-name">' + esc(t.name) + '</div><div class="tx-meta">' + t.date.replace(/-/g,'/') + '　' + periodShort(pOf) + ' 期' + (isCash ? '' : '　' + esc(cardNameOfTx(t))) + '</div></div>';
     html += '<div class="tx-amount">$' + (t.amount||0).toLocaleString() + '</div>';
-    html += '<div class="tx-actions"><button class="tx-btn" data-txid="' + t.id + '" onclick="' + (isCash ? 'openCashEditById' : 'openEditById') + '(this)">✏️</button></div></div>';
+    html += '<span class="tx-chev">›</span></div>';
   });
   html += '</div>';
   box.innerHTML = html;
@@ -1651,12 +1652,11 @@ function renderRecord() {
       html += '<div class="week-header"><div class="week-left"><div class="week-label">🗓 ' + weekLabel(parseInt(wn), p) + '</div>';
       if (showSettle) {
         if (allSettled) html += '<span class="week-badge badge-settled">✅ 已匯' + esc(settleBankName()) + '</span>';
-        else if (pendingTotal > 0) html += '<span class="week-badge badge-pending">🏦 待匯 $' + pendingTotal.toLocaleString() + '</span>';
       }
       html += '</div><div class="week-total">$' + total.toLocaleString() + '</div></div>';
       if (showSettle && !allSettled) html += '<button class="settle-btn" data-wn="' + wn + '" onclick="settleWeekById(this)">🏦 匯款到' + esc(settleBankName()) + '\u3000NT$ ' + pendingTotal.toLocaleString() + '</button>';
       group.forEach(function(tx){
-        html += '<div class="tx-item' + ((tx.settled && showSettle) ? ' settled' : '') + '">';
+        html += '<div class="tx-item tappable' + ((tx.settled && showSettle) ? ' settled' : '') + '" data-txid="' + esc(String(tx.id)) + '" onclick="openEditById(this)">';
         var isCatTheme = usesCatCards();
         var txCard = cardOfTx(tx) || DELETED_CARD;
         var badgeInner = (isCatTheme && txCard.catKey)
@@ -1665,7 +1665,7 @@ function renderRecord() {
         html += '<div class="tx-bank-badge" style="background:' + txCard.color + '">' + badgeInner + '</div>';
         html += '<div class="tx-info"><div class="tx-name">' + esc(tx.name) + '</div><div class="tx-meta">' + tx.date.slice(5).replace('-','/') + '　' + esc(cardNameOfTx(tx)) + '</div></div>';
         html += '<div class="tx-amount">$' + tx.amount.toLocaleString() + '</div>';
-        html += '<div class="tx-actions"><button class="tx-btn" data-txid="' + tx.id + '" onclick="openEditById(this)">✏️</button><button class="tx-btn del" data-txid="' + tx.id + '" onclick="deleteById(this)">🗑</button></div>';
+        html += '<span class="tx-chev">›</span>';
         html += '</div>';
       });
       html += '</div>';
@@ -1698,10 +1698,6 @@ function addedToast(msg, date) {
   if (tp.year === viewing.year && tp.month === viewing.month) return msg;
   return msg + '（已記入 ' + periodShort(tp) + ' 期）';
 }
-function deleteTransaction(id) {
-  data.transactions = data.transactions.filter(function(tx){return tx.id!=id;});
-  save(); renderAll();
-}
 function settleWeek(wn) {
   var p = getCurrentPeriod();
   data.transactions.forEach(function(tx){
@@ -1733,6 +1729,29 @@ function openEditTx(id, kind) {
   if (bankField) bankField.style.display = (kind === 'cash') ? 'none' : '';
   if (kind === 'card') { editCardId = tx.cardId; renderEditPills(tx.cardId); }
   document.getElementById('edit-modal').classList.add('open');
+}
+
+// 刪除移到編輯視窗：不會再一點就誤刪，刪了 5 秒內還能復原
+function deleteFromEdit() {
+  var list = editList();
+  var idx = -1;
+  for (var i = 0; i < list.length; i++) if (list[i].id == editingId) { idx = i; break; }
+  if (idx < 0) { closeEditModal(); return; }
+  var kind = editingKind;
+  var removed = list[idx];
+  if (kind === 'cash') data.cashTransactions.splice(idx, 1);
+  else data.transactions.splice(idx, 1);
+  save(); closeEditModal(); renderAll();
+  var label = String(removed.name || '').slice(0, 12) + ' $' + Number(removed.amount || 0).toLocaleString();
+  var who = currentUser ? currentUser.uid : null;
+  showUndoToast('已刪除「' + label + '」', function(){
+    if ((currentUser ? currentUser.uid : null) !== who) return;   // 帳號換了就不放回去
+    var arr = kind === 'cash' ? data.cashTransactions : data.transactions;
+    if (arr.some(function(t){ return t.id == removed.id; })) return;   // 已經在了就不重複
+    arr.splice(Math.min(idx, arr.length), 0, removed);
+    save(); renderAll();
+    showToast('已復原');
+  });
 }
 
 function closeEditModal() { document.getElementById('edit-modal').classList.remove('open'); editingId = null; }
@@ -1784,18 +1803,14 @@ function renderCash() {
     html += '<div class="week-block" style="margin-top:10px">';
     html += '<div class="week-header"><div class="week-left"><div class="week-label">💵 本期現金支出</div></div><div class="week-total">$' + total.toLocaleString() + '</div></div>';
     txs.forEach(function(tx){
-      html += '<div class="tx-item"><div class="tx-bank-badge" style="background:var(--kinari-l)">💵</div>';
+      html += '<div class="tx-item tappable" data-txid="' + esc(String(tx.id)) + '" onclick="openCashEditById(this)"><div class="tx-bank-badge" style="background:var(--kinari-l)">💵</div>';
       html += '<div class="tx-info"><div class="tx-name">' + esc(tx.name) + '</div><div class="tx-meta">' + tx.date.slice(5).replace('-','/') + '</div></div>';
       html += '<div class="tx-amount">$' + tx.amount.toLocaleString() + '</div>';
-      html += '<div class="tx-actions"><button class="tx-btn" data-txid="' + tx.id + '" onclick="openCashEditById(this)">✏️</button><button class="tx-btn del" data-txid="' + tx.id + '" onclick="deleteCashById(this)">🗑</button></div></div>';
+      html += '<span class="tx-chev">›</span></div>';
     });
     html += '</div>';
   }
   document.getElementById('cash-list').innerHTML = html;
-}
-function deleteCash(id) {
-  data.cashTransactions = data.cashTransactions.filter(function(tx){return tx.id!=id;});
-  save(); renderAll();
 }
 
 // ── OVERVIEW ─────────────────────────────────────────
@@ -1812,7 +1827,22 @@ function renderOverview() {
   html += '<div class="hero-card">';
   html += '<div class="hero-label">本期餘額</div>';
   html += '<div class="hero-amount">' + (s.remain>=0?'+':'') + 'NT$' + s.remain.toLocaleString() + '</div>';
-  html += '<div class="hero-period">' + periodLabel(p) + '</div>';
+  // 日期只留最上面的期間切換列，這裡不重複。改成顯示「平均每天可用」（只有這一期才有意義）
+  var rp = realCurrentPeriod();
+  if (p.year === rp.year && p.month === rp.month) {
+    var t0 = new Date(); t0.setHours(0, 0, 0, 0);
+    var pe = periodEnd(p);
+    var endDay = new Date(pe.getFullYear(), pe.getMonth(), pe.getDate());
+    var daysLeft = Math.round((endDay - t0) / 86400000) + 1;   // 含今天
+    var pill = 'display:inline-block;margin-top:6px;font-size:12px;font-weight:700;border-radius:8px;padding:4px 10px;';
+    if (s.remain < 0) {
+      html += '<div style="' + pill + 'background:rgba(178,58,46,0.55)">⚠️ 本期已超出 $' + Math.abs(s.remain).toLocaleString() + '</div>';
+    } else if (daysLeft <= 1) {
+      html += '<div style="' + pill + 'background:rgba(255,255,255,0.2)">今天是這期最後一天・可用 $' + s.remain.toLocaleString() + '</div>';
+    } else {
+      html += '<div style="' + pill + 'background:rgba(255,255,255,0.2)">還有 ' + daysLeft + ' 天・平均每天可用 $' + Math.floor(s.remain / daysLeft).toLocaleString() + '</div>';
+    }
+  }
   // Row 1: income / cc / cash
   html += '<div class="hero-cols" style="margin-top:14px">';
   html += '<div class="hero-col"><div class="hero-col-label">💴 收入</div><div class="hero-col-val">$' + s.income.toLocaleString() + '</div></div>';
@@ -1832,6 +1862,7 @@ function renderOverview() {
   html += '</div>';
   html += '</div>';
 
+  var _mHero = html.length;   // ↓ 額外收入
   // Extra incomes this period
   var extras = (data.extraIncomes||[]).filter(function(e){ return inPeriod(e,p); });
   if (extras.length) {
@@ -1852,6 +1883,7 @@ function renderOverview() {
     html += '</div>';
   }
 
+  var _mExtra = html.length;  // ↓ 薪資分配
   // Budget allocs by type
   html += '<div class="ov-card" style="margin-top:10px">';
   html += '<div class="ov-card-header"><div class="ov-card-title">💰 薪資分配</div></div>';
@@ -1870,6 +1902,7 @@ function renderOverview() {
   }
   html += '</div>';
 
+  var _mAlloc = html.length;  // ↓ 固定預算
   // Fixed expenses (display only, labeled clearly)
   var fixedItems = getFixedExpensesForPeriod(p).filter(function(e){return e.amount && e.included!==false;});
   if (fixedItems.length) {
@@ -1881,8 +1914,9 @@ function renderOverview() {
     html += '</div>';
   }
 
+  var _mFixed = html.length;  // ↓ 信用卡支出
   // CC breakdown
-  html += '<div class="ov-card" style="margin-top:10px;margin-bottom:12px">';
+  html += '<div class="ov-card" style="margin-top:10px">';
   html += '<div class="ov-card-header"><div class="ov-card-title">💳 信用卡支出</div><div class="ov-card-total">$' + s.ccTotal.toLocaleString() + '</div></div>';
   if (settleEnabled()) {
     html += '<div class="ov-row"><div class="ov-row-name">✅ 已匯' + esc(settleBankName()) + '</div><div class="ov-row-val val-green">$' + s.settled.toLocaleString() + '</div></div>';
@@ -1905,6 +1939,13 @@ function renderOverview() {
   }
   html += '</div>';
 
+  // 依「多常變動」重新排序：實際支出（每天在變）→ 薪資分配（每月）→ 固定預算（參考）→ 額外收入（偶爾）
+  html = html.slice(0, _mHero)
+       + html.slice(_mFixed)
+       + html.slice(_mExtra, _mAlloc)
+       + html.slice(_mAlloc, _mFixed)
+       + html.slice(_mHero, _mExtra)
+       + '<div style="height:12px"></div>';
   document.getElementById('overview-content').innerHTML = html;
 }
 
@@ -1949,8 +1990,14 @@ function changeSettingsMonth(delta) {
 
 // ── 設定頁：總覽 → 子頁（最多兩層）────────────────────
 // 內容區（唯一會捲動的元素）。找不到時退回視窗，避免舊環境出錯。
+// 今天所在的期間。getCurrentPeriod() 會跟著記帳頁的 ‹ › 切換，
+// 判斷「現在是哪一期」時一律用這個，否則切到上一期後別的頁面會跟著算錯。
+function realCurrentPeriod() {
+  var t = new Date();
+  return periodOfDate(t.getFullYear() + '-' + pad(t.getMonth() + 1) + '-' + pad(t.getDate()));
+}
 function scroller() { return document.getElementById('app-scroll') || document.scrollingElement || document.documentElement; }
-var APP_VERSION = 'v5.9 捲動修正';   // 唯一來源：左上角與「關於」都讀這裡
+var APP_VERSION = 'v6.0 介面優化';   // 唯一來源：左上角與「關於」都讀這裡
 document.addEventListener('DOMContentLoaded', function(){
   var el = document.getElementById('app-version-label');
   if (el) el.textContent = APP_VERSION;
@@ -2584,7 +2631,7 @@ function renderCumChart() {
 
   // 只畫到「已經發生」的月份。未來月份有薪水收入但支出為 0，
   // 畫進去會讓線暴衝，把推算值誤導成事實。
-  var now = getCurrentPeriod();
+  var now = realCurrentPeriod();
   var lastMonth;
   if (currentChartYear < now.year) lastMonth = 12;
   else if (currentChartYear > now.year) lastMonth = 0;
@@ -2736,9 +2783,12 @@ function renderChart() {
   var cGrid = cvar('--border', '#DDD9CF');
   var cLabel = cvar('--text3', '#A89F8C');
   // 哪些月份「有資料」——沒資料的月份不能當 0 畫進線裡，否則未來月份會讓線摔到底
+  // 只畫到「這個月」：未來月份的數字是照設定推算的，畫出來會跟真的一樣，造成誤導
+  var rcp = realCurrentPeriod();
+  var lastM = currentChartYear < rcp.year ? 12 : (currentChartYear > rcp.year ? 0 : rcp.month);
   var hasData = [];
   for (var hi = 0; hi < 12; hi++) {
-    hasData.push(!!(incomeData[hi] || savingsData[hi] || spendingData[hi]));
+    hasData.push(hi < lastM && !!(incomeData[hi] || savingsData[hi] || spendingData[hi]));
   }
 
   ctx.clearRect(0, 0, W, H);
@@ -2785,8 +2835,14 @@ function renderChart() {
     var mo = months[mii];
     if (mo.income===0&&mo.savings===0&&mo.spending===0) continue;
     var bal = mo.income - mo.spending - mo.savings;
-    listHtml += '<div class="ov-card" style="margin-top:8px">';
-    listHtml += '<div class="ov-card-header"><div class="ov-card-title">' + (mii+1) + ' 月</div><div class="ov-card-total ' + (bal>=0?'val-green':'val-rose') + '">' + (bal>=0?'+':'') + '$' + bal.toLocaleString() + '</div></div>';
+    var isNow = currentChartYear === rcp.year && (mii + 1) === rcp.month;
+    var isFuture = mii >= lastM;
+    // 本月加框強調；未來月份淡化並標明是推算值
+    var cardStyle = 'margin-top:8px' + (isNow ? ';border:2px solid var(--matcha)' : '') + (isFuture ? ';opacity:0.45' : '');
+    var tag = isNow ? ' <span style="font-size:10px;font-weight:800;color:var(--matcha);border:1.5px solid var(--matcha);border-radius:6px;padding:1px 6px;margin-left:4px">本月</span>'
+            : isFuture ? ' <span style="font-size:10px;color:var(--text3);margin-left:4px">依設定推算</span>' : '';
+    listHtml += '<div class="ov-card" style="' + cardStyle + '">';
+    listHtml += '<div class="ov-card-header"><div class="ov-card-title">' + (mii+1) + ' 月' + tag + '</div><div class="ov-card-total ' + (bal>=0?'val-green':'val-rose') + '">' + (bal>=0?'+':'') + '$' + bal.toLocaleString() + '</div></div>';
     listHtml += '<div class="ov-row"><div class="ov-row-name">💴 收入</div><div class="ov-row-val val-green">$' + mo.income.toLocaleString() + '</div></div>';
     listHtml += '<div class="ov-row"><div class="ov-row-name">🏦📈💾 存款+投資+預存</div><div class="ov-row-val val-blue">$' + mo.savings.toLocaleString() + '</div></div>';
     listHtml += '<div class="ov-row"><div class="ov-row-name">💸 實際支出</div><div class="ov-row-val val-rose">$' + mo.spending.toLocaleString() + '</div></div>';
@@ -2833,6 +2889,7 @@ function importData(e) {
     var cnt = incoming.transactions.length +
               (Array.isArray(incoming.cashTransactions) ? incoming.cashTransactions.length : 0);
     snapshotBeforeImport();
+    cancelUndo();
     data = incoming;
     normalizeData();
     save(); renderBankPills(); renderAll();
@@ -2849,6 +2906,7 @@ function undoImport() {
   if (!snap || !snap.data || !Array.isArray(snap.data.transactions)) {
     showToast('⚠️ 快照損毀，無法復原'); return;
   }
+  cancelUndo();
   data = snap.data;
   normalizeData();
   save(); renderBankPills(); renderAll();
@@ -3006,17 +3064,51 @@ function switchTab(tab) {
   if (tab==='chart') { setTimeout(function(){ renderChart(); }, 60); }
 }
 
+// 提示訊息共用一個計時器：新的提示會取代舊的，不會被舊的計時器提早關掉
+var _toastTimer = null, _undoFn = null, _pendingInfo = null;
+// 使用者自己操作的提示：代表他已經往下做了，直接顯示並放棄先前的復原
 function showToast(msg) {
   var t = document.getElementById('toast');
-  t.textContent=msg; t.classList.add('show');
-  setTimeout(function(){t.classList.remove('show');}, 2000);
+  _undoFn = null; _pendingInfo = null;
+  t.classList.remove('actionable');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 2000);
+}
+// 附「復原」的提示，5 秒內可以按
+function showUndoToast(msg, undoFn) {
+  var t = document.getElementById('toast');
+  _undoFn = undoFn;
+  t.innerHTML = '<span>' + esc(msg) + '</span><button class="toast-undo" onclick="runUndo()">復原</button>';
+  t.classList.add('show', 'actionable');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(function(){
+    t.classList.remove('show', 'actionable'); _undoFn = null;
+    if (_pendingInfo) { var m = _pendingInfo; _pendingInfo = null; showToast(m); }
+  }, 5000);
+}
+// 背景發生的提示（例如 LINE 收到新帳）：不是使用者觸發的，不能搶走他的復原鈕，
+// 復原期間先排隊，時間到再顯示
+function showBackgroundToast(msg) {
+  if (_undoFn) { _pendingInfo = msg; return; }
+  showToast(msg);
+}
+function runUndo() {
+  var fn = _undoFn; _undoFn = null; _pendingInfo = null;
+  clearTimeout(_toastTimer);
+  if (fn) fn();
+}
+// 帳本被整個換掉（登入、登出、換帳號、雲端載入、匯入）時呼叫：
+// 復原是「把刪掉的那筆放回目前的帳本」，帳本換了就不能再放，否則可能放進別人的帳本
+function cancelUndo() {
+  _undoFn = null; _pendingInfo = null;
+  var t = document.getElementById('toast');
+  if (t && t.classList.contains('actionable')) { clearTimeout(_toastTimer); t.classList.remove('show', 'actionable'); }
 }
 
 // ── PROXY HANDLERS ───────────────────────────────────
 function openEditById(el) { openEdit(el.getAttribute('data-txid')); }
 function openCashEditById(el) { openCashEdit(el.getAttribute('data-txid')); }
-function deleteById(el) { deleteTransaction(el.getAttribute('data-txid')); }
-function deleteCashById(el) { deleteCash(el.getAttribute('data-txid')); }
 
 document.getElementById('edit-modal').addEventListener('click', function(e){
   if (e.target===this) closeEditModal();
@@ -3046,6 +3138,7 @@ var pushWhileLoading = false;
 var syncTimeout = null;
 
 function updateAuthBar(user) {
+  cancelUndo();   // 登入、登出、換帳號
   setTimeout(function(){ if (window.VP) VP.syncAuthBarHeight(); }, 0);
   var bar = document.getElementById('auth-bar-inner');
   if (!bar) { setTimeout(function(){ updateAuthBar(user); }, 100); return; }
@@ -3133,6 +3226,7 @@ function runConfirmAction(i) {
 
 // 把本機資料歸零（雲端不動）
 function wipeLocal() {
+  cancelUndo();
   localStorage.removeItem(STORAGE_KEY);
   localStorage.removeItem(LAST_UID_KEY);
   data = JSON.parse(JSON.stringify(DEFAULT_DATA));
@@ -3306,6 +3400,7 @@ function loadFromFirebase() {
   db.collection('users').doc(currentUser.uid).get().then(function(doc) {
     if (doc.exists && doc.data().data) {
       try {
+        cancelUndo();
         data = JSON.parse(doc.data().data);
         normalizeData();
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -3417,7 +3512,7 @@ function drainInbox() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     renderBankPills(); renderAll();
     if (r.stat.added || r.stat.undone) {
-      showToast('📥 LINE：新增 ' + r.stat.added + ' 筆' + (r.stat.undone ? '、取消 ' + r.stat.undone + ' 筆' : ''));
+      showBackgroundToast('📥 LINE：新增 ' + r.stat.added + ' 筆' + (r.stat.undone ? '、取消 ' + r.stat.undone + ' 筆' : ''));
     }
     var b = db.batch();
     r.ids.forEach(function(id){ b.delete(inbox.doc(id)); });
