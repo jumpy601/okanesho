@@ -320,6 +320,10 @@ input:focus, select:focus {
 .val-blue  { color: var(--sora); }
 
 /* ── SETTINGS ── */
+.sp-link{display:block;margin:2px 20px 8px;padding:0;background:none;border:none;font-family:inherit;font-size:12px;font-weight:700;color:var(--matcha);cursor:pointer;text-align:left}
+.seg2{display:flex;border:1.5px solid var(--border);border-radius:9px;overflow:hidden;background:var(--bg2)}
+.seg2 button{flex:1;padding:9px 0;border:none;background:none;font-family:inherit;font-size:14px;font-weight:700;color:var(--text2);cursor:pointer}
+.seg2 button.on{background:var(--matcha);color:#fff}
 .sg-label{font-size:11px;color:var(--text3);font-weight:600;letter-spacing:0.5px;margin:18px 20px 6px}
 .sg{margin:0 16px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);overflow:hidden}
 .sg-row{display:flex;align-items:center;gap:10px;width:100%;padding:13px 14px;background:none;border:none;border-top:1px solid var(--border);font-family:inherit;color:var(--text);text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent}
@@ -687,6 +691,7 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
     <div class="sg">
       <button class="sg-row" onclick="openSub('cards')"><span class="sg-ic">💳</span><span class="sg-name">信用卡</span><span class="sg-val" id="ov-cards"></span><span class="sg-chev">›</span></button>
       <button class="sg-row" onclick="openSub('cycle')"><span class="sg-ic">📅</span><span class="sg-name">結算日</span><span class="sg-val" id="ov-cycle"></span><span class="sg-chev">›</span></button>
+      <button class="sg-row" onclick="openSub('income')"><span class="sg-ic">💼</span><span class="sg-name">收入方式</span><span class="sg-val" id="ov-income"></span><span class="sg-chev">›</span></button>
       <button class="sg-row" onclick="openSub('settle')"><span class="sg-ic">🏦</span><span class="sg-name">卡費匯款</span><span class="sg-val" id="ov-settle"></span><span class="sg-chev">›</span></button>
       <button class="sg-row" onclick="openSub('name')"><span class="sg-ic">📒</span><span class="sg-name">帳本名稱</span><span class="sg-val" id="ov-name"></span><span class="sg-chev">›</span></button>
     </div>
@@ -707,6 +712,7 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
     <div class="sp-head"><button class="sp-back" onclick="closeSub()">‹ 設定</button></div>
     <div class="sp-title">💴 薪水與分配</div>
     <div class="sp-desc">「預設值」是每個月都套用的金額；「當月調整」只改某一個月。</div>
+    <button id="income-mode-link" class="sp-link" onclick="openSub('income')"></button>
   <div style="display:flex;gap:0;margin:12px 16px 0;border:1.5px solid var(--border);border-radius:9px;overflow:hidden;background:var(--bg2)">
     <button id="stab-default" onclick="switchSettingsTab('default')" style="flex:1;padding:8px;font-size:13px;font-weight:700;border:none;cursor:pointer;background:var(--matcha);color:white;font-family:inherit">📋 預設值</button>
     <button id="stab-month" onclick="switchSettingsTab('month')" style="flex:1;padding:8px;font-size:13px;font-weight:700;border:none;cursor:pointer;background:transparent;color:var(--text2);font-family:inherit">📅 當月調整</button>
@@ -851,6 +857,17 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
         <div id="cycle-preview" style="font-size:11px;color:var(--text3);margin-top:10px;line-height:1.7"></div>
       </div>
     </div>
+    <div style="height:20px"></div>
+  </div>
+
+  <div class="sp" id="sp-income">
+    <div class="sp-head"><button class="sp-back" onclick="closeSub()">‹ 設定</button></div>
+    <div class="sp-title">💼 收入方式</div>
+    <div class="sp-desc">薪水每個月都一樣，選「每月固定」；會因為加班、獎金、抽成而不同，選「每月不同」。</div>
+    <div class="set-card" style="margin-top:10px"><div class="set-row" style="border-bottom:none">
+            <div class="seg2"><button id="income-mode-fixed" onclick="setIncomeMode('fixed')">每月固定</button><button id="income-mode-variable" onclick="setIncomeMode('variable')">每月不同</button></div>
+      <div id="income-mode-hint" class="sp-note"></div>
+    </div></div>
     <div style="height:20px"></div>
   </div>
 
@@ -1195,6 +1212,8 @@ function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
 // 統一的資料正規化：load / 雲端載入 / 匯入 / 復原 四條路徑共用同一份，
 // 避免同樣的補預設值邏輯散在多處只改到其中一處（單檔 app 的經典漏改）
 function normalizeData() {
+  // 收入模式：'fixed' 每月固定（預設）／'variable' 每月不同
+  if (data.incomeMode !== 'variable') data.incomeMode = 'fixed';
   var cd = parseInt(data.cycleStartDay, 10);
   data.cycleStartDay = (cd && cd >= 1 && cd <= 31) ? cd : 25;
   if (typeof data.appTitle !== 'string') data.appTitle = '';
@@ -1825,41 +1844,68 @@ function renderOverview() {
 
   // ── Hero card: 6 metrics ──
   html += '<div class="hero-card">';
-  html += '<div class="hero-label">本期餘額</div>';
-  html += '<div class="hero-amount">' + (s.remain>=0?'+':'') + 'NT$' + s.remain.toLocaleString() + '</div>';
-  // 日期只留最上面的期間切換列，這裡不重複。改成顯示「平均每天可用」（只有這一期才有意義）
-  var rp = realCurrentPeriod();
-  if (p.year === rp.year && p.month === rp.month) {
-    var t0 = new Date(); t0.setHours(0, 0, 0, 0);
-    var pe = periodEnd(p);
-    var endDay = new Date(pe.getFullYear(), pe.getMonth(), pe.getDate());
-    var daysLeft = Math.round((endDay - t0) / 86400000) + 1;   // 含今天
-    var pill = 'display:inline-block;margin-top:6px;font-size:12px;font-weight:700;border-radius:8px;padding:4px 10px;';
-    if (s.remain < 0) {
-      html += '<div style="' + pill + 'background:rgba(178,58,46,0.55)">⚠️ 本期已超出 $' + Math.abs(s.remain).toLocaleString() + '</div>';
-    } else if (daysLeft <= 1) {
-      html += '<div style="' + pill + 'background:rgba(255,255,255,0.2)">今天是這期最後一天・可用 $' + s.remain.toLocaleString() + '</div>';
-    } else {
-      html += '<div style="' + pill + 'background:rgba(255,255,255,0.2)">還有 ' + daysLeft + ' 天・平均每天可用 $' + Math.floor(s.remain / daysLeft).toLocaleString() + '</div>';
+  var needIncome = incomeNeedsEntry(p);
+  var editingIncome = isVariableIncome() && incomeEditingKey === periodKey(p);
+  if (needIncome || editingIncome) {
+    // 每月不同、這期還沒填（或正在修改）：只列支出，不顯示負的餘額與「本期已超出」
+    var ia = incomeAlloc();
+    var curVal = (periodIncomeEntered(p) && ia) ? getAllocAmount(ia.id, p) : '';
+    html += '<div class="hero-label">' + (needIncome ? '本期收入還沒填' : '修改本期收入') + '</div>';
+    html += '<div style="font-size:12px;opacity:0.85;margin:2px 0 10px">' + (needIncome ? '填好之後才能算本期餘額和每天可用' : '只會改這一期，其他月份不受影響') + '</div>';
+    // 「本期收入」顯示的是薪水＋額外收入的合計，這裡只改薪水 —— 有額外收入時要講清楚，免得以為數字對不上
+    var extraSum = (data.extraIncomes || []).filter(function(e){ return inPeriod(e, p); }).reduce(function(t, e){ return t + (e.amount || 0); }, 0);
+    if (extraSum > 0) html += '<div style="font-size:11px;opacity:0.85;margin:-4px 0 10px">這裡只填薪水；本期另有額外收入 $' + extraSum.toLocaleString() + '，會自動加進本期收入</div>';
+    html += '<div style="display:flex;gap:8px">'
+      + '<input id="period-income-input" type="number" inputmode="numeric" placeholder="這期實際收到多少？" value="' + curVal + '" onkeydown="if(event.key===\'Enter\')savePeriodIncome()" style="flex:1;min-width:0;padding:10px 12px;border:none;border-radius:10px;font-family:inherit;font-size:15px;color:#333;background:#fff">'
+      + '<button onclick="savePeriodIncome()" style="flex:0 0 auto;padding:10px 16px;border:none;border-radius:10px;background:rgba(255,255,255,0.92);color:var(--matcha);font-family:inherit;font-weight:800;font-size:14px;cursor:pointer">儲存</button>'
+      + '</div>';
+    if (!needIncome) html += '<button onclick="cancelIncomeEdit()" style="background:none;border:none;color:inherit;opacity:0.85;font-family:inherit;font-size:12px;margin-top:8px;padding:0;cursor:pointer">取消</button>';
+    html += '<div class="hero-cols" style="margin-top:14px">';
+    html += '<div class="hero-col"><div class="hero-col-label">💳 信用卡支出</div><div class="hero-col-val">$' + s.ccTotal.toLocaleString() + '</div></div>';
+    html += '<div class="hero-col"><div class="hero-col-label">💵 現金支出</div><div class="hero-col-val">$' + s.cashTotal.toLocaleString() + '</div></div>';
+    html += '<div class="hero-col"></div>';
+    html += '</div>';
+  } else {
+    html += '<div class="hero-label">本期餘額</div>';
+    html += '<div class="hero-amount">' + (s.remain>=0?'+':'') + 'NT$' + s.remain.toLocaleString() + '</div>';
+    // 日期只留最上面的期間切換列，這裡不重複。改成顯示「平均每天可用」（只有這一期才有意義）
+    var rp = realCurrentPeriod();
+    if (p.year === rp.year && p.month === rp.month) {
+      var t0 = new Date(); t0.setHours(0, 0, 0, 0);
+      var pe = periodEnd(p);
+      var endDay = new Date(pe.getFullYear(), pe.getMonth(), pe.getDate());
+      var daysLeft = Math.round((endDay - t0) / 86400000) + 1;   // 含今天
+      var pill = 'display:inline-block;margin-top:6px;font-size:12px;font-weight:700;border-radius:8px;padding:4px 10px;';
+      if (s.remain < 0) {
+        html += '<div style="' + pill + 'background:rgba(178,58,46,0.55)">⚠️ 本期已超出 $' + Math.abs(s.remain).toLocaleString() + '</div>';
+      } else if (daysLeft <= 1) {
+        html += '<div style="' + pill + 'background:rgba(255,255,255,0.2)">今天是這期最後一天・可用 $' + s.remain.toLocaleString() + '</div>';
+      } else {
+        html += '<div style="' + pill + 'background:rgba(255,255,255,0.2)">還有 ' + daysLeft + ' 天・平均每天可用 $' + Math.floor(s.remain / daysLeft).toLocaleString() + '</div>';
+      }
     }
+    // Row 1: income / cc / cash
+    html += '<div class="hero-cols" style="margin-top:14px">';
+    if (isVariableIncome()) {
+      html += '<div class="hero-col" onclick="startIncomeEdit()" style="cursor:pointer"><div class="hero-col-label">💴 本期收入 ✏️</div><div class="hero-col-val">$' + s.income.toLocaleString() + '</div></div>';
+    } else {
+      html += '<div class="hero-col"><div class="hero-col-label">💴 收入</div><div class="hero-col-val">$' + s.income.toLocaleString() + '</div></div>';
+    }
+    html += '<div class="hero-col"><div class="hero-col-label">💳 信用卡支出</div><div class="hero-col-val">$' + s.ccTotal.toLocaleString() + '</div></div>';
+    html += '<div class="hero-col"><div class="hero-col-label">💵 現金支出</div><div class="hero-col-val">$' + s.cashTotal.toLocaleString() + '</div></div>';
+    html += '</div>';
+    // Row 2: 存款 / 投資 / 預存（icon 與設定頁的分類按鈕一致）
+    html += '<div class="hero-cols" style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.15)">';
+    html += '<div class="hero-col"><div class="hero-col-label">🏦 存款</div><div class="hero-col-val">$' + s.savings.toLocaleString() + '</div></div>';
+    html += '<div class="hero-col"><div class="hero-col-label">📈 投資</div><div class="hero-col-val">$' + s.invest.toLocaleString() + '</div></div>';
+    html += '<div class="hero-col"><div class="hero-col-label">💾 預存</div><div class="hero-col-val">$' + s.reserve.toLocaleString() + '</div></div>';
+    html += '</div>';
+    // Row 3: 固定支出（參考值，不列入本期餘額）
+    html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.15);display:flex;justify-content:space-between;align-items:center;opacity:0.75">';
+    html += '<div style="font-size:12px">📌 固定預算<span style="font-size:10px;opacity:0.8">（參考，未列入餘額）</span></div>';
+    html += '<div style="font-size:14px;font-weight:700">$' + s.fixedTotal.toLocaleString() + '</div>';
+    html += '</div>';
   }
-  // Row 1: income / cc / cash
-  html += '<div class="hero-cols" style="margin-top:14px">';
-  html += '<div class="hero-col"><div class="hero-col-label">💴 收入</div><div class="hero-col-val">$' + s.income.toLocaleString() + '</div></div>';
-  html += '<div class="hero-col"><div class="hero-col-label">💳 信用卡支出</div><div class="hero-col-val">$' + s.ccTotal.toLocaleString() + '</div></div>';
-  html += '<div class="hero-col"><div class="hero-col-label">💵 現金支出</div><div class="hero-col-val">$' + s.cashTotal.toLocaleString() + '</div></div>';
-  html += '</div>';
-  // Row 2: 存款 / 投資 / 預存（icon 與設定頁的分類按鈕一致）
-  html += '<div class="hero-cols" style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.15)">';
-  html += '<div class="hero-col"><div class="hero-col-label">🏦 存款</div><div class="hero-col-val">$' + s.savings.toLocaleString() + '</div></div>';
-  html += '<div class="hero-col"><div class="hero-col-label">📈 投資</div><div class="hero-col-val">$' + s.invest.toLocaleString() + '</div></div>';
-  html += '<div class="hero-col"><div class="hero-col-label">💾 預存</div><div class="hero-col-val">$' + s.reserve.toLocaleString() + '</div></div>';
-  html += '</div>';
-  // Row 3: 固定支出（參考值，不列入本期餘額）
-  html += '<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.15);display:flex;justify-content:space-between;align-items:center;opacity:0.75">';
-  html += '<div style="font-size:12px">📌 固定預算<span style="font-size:10px;opacity:0.8">（參考，未列入餘額）</span></div>';
-  html += '<div style="font-size:14px;font-weight:700">$' + s.fixedTotal.toLocaleString() + '</div>';
-  html += '</div>';
   html += '</div>';
 
   var _mHero = html.length;   // ↓ 額外收入
@@ -1873,7 +1919,7 @@ function renderOverview() {
       var unalloc = e.amount - allocated;
       html += '<div class="ov-row" style="flex-direction:column;align-items:flex-start;gap:5px">';
       html += '<div style="display:flex;justify-content:space-between;width:100%"><div class="ov-row-name">🎁 ' + e.name + '</div><div class="ov-row-val val-green">+$' + e.amount.toLocaleString() + '</div></div>';
-      if (unalloc > 0) html += '<div style="font-size:11px;color:var(--kinari);background:var(--kinari-l);padding:3px 8px;border-radius:8px">⚠️ 未分配 $' + unalloc.toLocaleString() + '</div>';
+      if (unalloc > 0) html += '<div style="font-size:11px;color:var(--kinari);background:var(--kinari-l);padding:3px 8px;border-radius:8px">⚠️ 未分配 $' + unalloc.toLocaleString() + '・留在本期餘額</div>';
       (e.allocations||[]).forEach(function(al){
         html += '<div style="display:flex;justify-content:space-between;width:100%;padding-left:8px;font-size:13px"><div style="color:var(--text2)">' + typeIcon(al.type) + ' ' + al.name + '</div><div style="font-weight:600">$' + al.amount.toLocaleString() + '</div></div>';
       });
@@ -1992,12 +2038,76 @@ function changeSettingsMonth(delta) {
 // 內容區（唯一會捲動的元素）。找不到時退回視窗，避免舊環境出錯。
 // 今天所在的期間。getCurrentPeriod() 會跟著記帳頁的 ‹ › 切換，
 // 判斷「現在是哪一期」時一律用這個，否則切到上一期後別的頁面會跟著算錯。
+// ── 收入：每月固定／每月不同 ─────────────────────────────
+function isVariableIncome() { return data.incomeMode === 'variable'; }
+// 收入項目：薪資分配裡第一個標成收入的
+function incomeAlloc() {
+  return (data.budgetAllocs || []).find(function(a){ return a.isIncome || a.allocType === 'income'; }) || null;
+}
+// 每月不同的人，收入一律以「該期的當月調整值」為準；沒有調整值就是還沒填
+function periodIncomeEntered(p) {
+  var a = incomeAlloc();
+  if (!a) return false;
+  var ov = data.monthlyOverrides[periodKey(p)];
+  return !!ov && ov[a.id] !== undefined;
+}
+// 需要請使用者填收入：每月不同、這期還沒填、而且不是未來的期間
+function incomeNeedsEntry(p) {
+  return isVariableIncome() && !periodIncomeEntered(p) && periodOrd(p) <= periodOrd(realCurrentPeriod());
+}
+function ensureIncomeAlloc() {
+  var a = incomeAlloc();
+  if (a) return a;
+  a = { id: mkId(), name: '薪水', amount: 0, isIncome: true };
+  data.budgetAllocs.unshift(a);
+  return a;
+}
+var incomeEditingKey = null;   // 正在修改哪一期的收入（null = 沒有在改）
+function startIncomeEdit() {
+  incomeEditingKey = periodKey(getCurrentPeriod());
+  renderOverview();
+  var el = document.getElementById('period-income-input');
+  if (el) { el.focus(); el.select && el.select(); }
+}
+function cancelIncomeEdit() { incomeEditingKey = null; renderOverview(); }
+function savePeriodIncome() {
+  var el = document.getElementById('period-income-input');
+  if (!el) return;
+  var raw = String(el.value).replace(/,/g, '').trim();
+  var v = Number(raw);
+  if (raw === '' || !isFinite(v) || v < 0) { showToast('⚠️ 請輸入這期實際收到的金額'); return; }
+  var p = getCurrentPeriod();
+  var a = ensureIncomeAlloc();
+  setAllocOverride(a.id, p, v);   // 只寫這一期，其他月份不受影響
+  incomeEditingKey = null;
+  renderAll();
+  showToast('💰 本期收入：$' + v.toLocaleString());
+}
+function setIncomeMode(mode) {
+  data.incomeMode = mode === 'variable' ? 'variable' : 'fixed';
+  save(); renderAll();
+}
+function renderIncomeMode() {
+  var f = document.getElementById('income-mode-fixed'), v = document.getElementById('income-mode-variable');
+  if (!f || !v) return;
+  f.classList.toggle('on', !isVariableIncome());
+  v.classList.toggle('on', isVariableIncome());
+  var link = document.getElementById('income-mode-link');
+  if (link) link.textContent = isVariableIncome()
+    ? '收入方式：每月不同（在月總覽填每期收入）›'
+    : '薪水每個月不一樣？到「收入方式」選每月不同 ›';
+  var hint = document.getElementById('income-mode-hint');
+  if (hint) hint.textContent = isVariableIncome()
+    ? '每期發薪後，在月總覽填實際收到的金額。加班、獎金、抽成造成的差異都照實記。也可以在 LINE 傳「收入 52000」。'
+    : '薪水照「預設值」每個月自動帶入。某個月不一樣時，在「當月調整」修改那一期。獎金、紅包、退款這類額外的錢，可以在 LINE 傳「收入 紅包 6000」記成額外收入。';
+}
+
 function realCurrentPeriod() {
   var t = new Date();
   return periodOfDate(t.getFullYear() + '-' + pad(t.getMonth() + 1) + '-' + pad(t.getDate()));
 }
 function scroller() { return document.getElementById('app-scroll') || document.scrollingElement || document.documentElement; }
-var APP_VERSION = 'v6.1 年圖範圍';   // 唯一來源：左上角與「關於」都讀這裡
+var APP_VERSION = 'v6.4 連動修正';   // 唯一來源：左上角與「關於」都讀這裡
 document.addEventListener('DOMContentLoaded', function(){
   var el = document.getElementById('app-version-label');
   if (el) el.textContent = APP_VERSION;
@@ -2045,13 +2155,13 @@ function closeSub() {
 
 // 新手清單：必要的只有兩項（薪水、信用卡），LINE 選填。完成或關閉後就不再出現。
 function setupState() {
-  var cur = getCurrentPeriod();
+  var cur = realCurrentPeriod();
   var salary = data.budgetAllocs.filter(function(a){ return a.isIncome || a.allocType === 'income'; })
     .reduce(function(s, a){ return s + getAllocAmount(a.id, cur); }, 0);
   var cards = data.cards || [];
   var untouchedDefault = cards.length === 1 && cards[0].name === '信用卡' && cards[0].id == 1;
   return {
-    salary: salary > 0,
+    salary: salary > 0 || isVariableIncome(),   // 每月不同的人選好模式就算完成，不會每月初又跳回未完成
     cards: !!data.setupCardsReviewed || (cards.length > 0 && !untouchedDefault),
     line: lineBound === true
   };
@@ -2092,11 +2202,16 @@ function renderSettingsOverview() {
     el.textContent = text;
     el.classList.toggle('todo', !!todo);
   }
-  var cur = getCurrentPeriod();
+  var cur = realCurrentPeriod();
   var incomes = data.budgetAllocs.filter(function(a){ return a.isIncome || a.allocType === 'income'; });
   var salary = incomes.reduce(function(s, a){ return s + getAllocAmount(a.id, cur); }, 0);
   var nAlloc = data.budgetAllocs.length - incomes.length;
-  set('ov-budget', salary > 0 ? '$' + salary.toLocaleString() + '・' + nAlloc + ' 項' : '尚未填寫', salary <= 0);
+  if (isVariableIncome()) {
+    var entered = periodIncomeEntered(cur);
+    set('ov-budget', '每月不同・' + (entered ? '本期 $' + salary.toLocaleString() : '本期未填'), !entered);
+  } else {
+    set('ov-budget', salary > 0 ? '$' + salary.toLocaleString() + '・' + nAlloc + ' 項' : '尚未填寫', salary <= 0);
+  }
 
   var fx = getFixedExpensesForPeriod(cur).filter(function(e){ return e.included !== false; });
   var fxSum = fx.reduce(function(s, e){ return s + (e.amount || 0); }, 0);
@@ -2107,6 +2222,7 @@ function renderSettingsOverview() {
 
   set('ov-cards', (data.cards || []).length + ' 張');
   set('ov-cycle', '每月 ' + cycleDay() + ' 日');
+  set('ov-income', isVariableIncome() ? '每月不同' : '每月固定');
   set('ov-settle', settleEnabled() ? settleBankName() : '不使用');
   set('ov-name', appTitle());
   set('ov-line', lineBound === true ? '已綁定' : (currentUser ? '未綁定' : '需先登入'));
@@ -2121,6 +2237,7 @@ function renderSettingsOverview() {
 function renderSettings() {
   var p = getSettingsPeriod();
   renderAppTitle();
+  renderIncomeMode();
   renderLineSetting();
   renderCycleSetting();
   renderMonthAllocTypeOptions();
@@ -2209,7 +2326,7 @@ function renderSettings() {
     h += '<div class="set-row-top"><div class="set-name">🎁 ' + e.name + '</div><button class="icon-btn del" data-eid="' + e.id + '" onclick="removeExtraById(this)">🗑</button></div>';
     h += '<div class="set-row-bottom" style="flex-direction:column;align-items:flex-start;gap:6px">';
     h += '<div style="display:flex;justify-content:space-between;width:100%"><span style="font-size:13px;color:var(--text2)">' + e.date.slice(0,7).replace('-','/') + '</span><span style="font-size:15px;font-weight:700;color:var(--matcha)">+$' + e.amount.toLocaleString() + '</span></div>';
-    if (unalloc > 0) h += '<div style="font-size:11px;color:var(--kinari);background:var(--kinari-l);padding:3px 8px;border-radius:8px">⚠️ 未分配 $' + unalloc.toLocaleString() + '</div>';
+    if (unalloc > 0) h += '<div style="font-size:11px;color:var(--kinari);background:var(--kinari-l);padding:3px 8px;border-radius:8px">⚠️ 未分配 $' + unalloc.toLocaleString() + '・留在本期餘額</div>';
     else h += '<div style="font-size:11px;color:var(--matcha);background:var(--matcha-l);padding:3px 8px;border-radius:8px">✅ 已全數分配</div>';
     h += '<button data-eid="' + e.id + '" onclick="openExtraAllocById(this)" style="font-size:12px;padding:5px 10px;border-radius:7px;border:1.5px dashed var(--border);background:var(--bg);cursor:pointer;font-family:inherit;color:var(--text2)">✏️ 管理分配</button>';
     h += '</div></div>';
@@ -2291,7 +2408,7 @@ function renderCycleSetting() {
 
   var pv = document.getElementById('cycle-preview');
   if (!pv) return;
-  var p = getCurrentPeriod();
+  var p = realCurrentPeriod();
   var txt = '目前這一期：<b>' + periodLabel(p) + '</b>';
   if (cur === 1) {
     txt += '<br>設 1 = 完全照日曆月計算。';
@@ -2358,7 +2475,9 @@ function updateAllocRemainLabel() {
 
 
 function snapshotHistoryMonths() {
-  var p = getCurrentPeriod();
+  // 一定要用真正的本期：用 getCurrentPeriod() 的話，月總覽切到上一期時，
+  // 會把上一期當成「現在」，結果本期被凍結成舊值、上一期反而套到新值
+  var p = realCurrentPeriod();
   var currentKey = periodKey(p);
   var months = {};
   // 用帳務週期的「期間」當 key，不能用日曆月——起始日 25 時，7/10 屬於 6 月期
@@ -2370,9 +2489,13 @@ function snapshotHistoryMonths() {
     var k = periodKey(periodOfDate(tx.date));
     if(k!==currentKey) months[k]=true;
   });
+  // 每月不同的人，收入「沒有調整值」代表還沒填，不是「等於預設值」——不能替他凍結成預設值，
+  // 否則那幾期的「還沒填」提示會消失、收入被鎖成 0
+  var skipIncome = isVariableIncome() ? incomeAlloc() : null;
   Object.keys(months).forEach(function(key){
     if(!data.monthlyOverrides[key]) data.monthlyOverrides[key]={};
     data.budgetAllocs.forEach(function(a){
+      if (skipIncome && a.id == skipIncome.id) return;
       if(data.monthlyOverrides[key][a.id]===undefined) data.monthlyOverrides[key][a.id]=a.amount;
     });
     (data.fixedExpenses||[]).forEach(function(fe){
@@ -2434,7 +2557,7 @@ function handleFixedAmount(el) {
   if (!e) return;
   var p = getSettingsPeriod();
   var key = periodKey(p);
-  var cp = getCurrentPeriod();
+  var cp = realCurrentPeriod();
   if (p.year === cp.year && p.month === cp.month) {
     snapshotHistoryMonths();
     e.amount = parseFloat(el.value)||0;
@@ -2846,6 +2969,10 @@ function renderChart() {
     var cardStyle = 'margin-top:8px' + (isNow ? ';border:2px solid var(--matcha)' : '') + (isFuture ? ';opacity:0.45' : '');
     var tag = isNow ? ' <span style="font-size:10px;font-weight:800;color:var(--matcha);border:1.5px solid var(--matcha);border-radius:6px;padding:1px 6px;margin-left:4px">本月</span>'
             : isFuture ? ' <span style="font-size:10px;color:var(--text3);margin-left:4px">依設定推算</span>' : '';
+    // 每月不同、這期收入沒填：收入算 0 會讓「還留著」掉很多，要讓人看得出是資料沒填而不是沒收入
+    if (!isFuture && isVariableIncome() && !periodIncomeEntered({ year: currentChartYear, month: mii + 1 })) {
+      tag += ' <span style="font-size:10px;font-weight:700;color:#B23A2E;margin-left:4px">收入未填</span>';
+    }
     listHtml += '<div class="ov-card" style="' + cardStyle + '">';
     listHtml += '<div class="ov-card-header"><div class="ov-card-title">' + (mii+1) + ' 月' + tag + '</div><div class="ov-card-total ' + (bal>=0?'val-green':'val-rose') + '">' + (bal>=0?'+':'') + '$' + bal.toLocaleString() + '</div></div>';
     listHtml += '<div class="ov-row"><div class="ov-row-name">💴 收入</div><div class="ov-row-val val-green">$' + mo.income.toLocaleString() + '</div></div>';
@@ -3447,7 +3574,8 @@ function normalizedCopy(obj) {
 }
 
 function applyInboxOps(base, ops) {
-  var added = 0, undone = 0;
+  var added = 0, undone = 0, incomeSet = null, extraAdded = 0;
+  if (!Array.isArray(base.extraIncomes)) base.extraIncomes = [];
   function has(id) {
     return base.transactions.some(function(t){ return t.id === id; }) ||
            base.cashTransactions.some(function(t){ return t.id === id; });
@@ -3469,14 +3597,33 @@ function applyInboxOps(base, ops) {
           cardId: stillThere ? e.cardId : null, bank: e.cardName || '', settled: false, src: 'line' });
       }
       added++;
+    } else if (e.op === 'income') {
+      // LINE 傳「收入 52000」：寫進那一期的當月調整（不動其他月份）
+      var amt = Number(e.amount);
+      if (!/^\d{4}-\d{1,2}$/.test(e.period || '') || !isFinite(amt) || amt < 0) return;
+      var inc = (base.budgetAllocs || []).find(function(a){ return a.isIncome || a.allocType === 'income'; });
+      if (!inc) { inc = { id: o.id, name: '薪水', amount: 0, isIncome: true }; base.budgetAllocs.unshift(inc); }
+      if (!base.monthlyOverrides[e.period]) base.monthlyOverrides[e.period] = {};
+      base.monthlyOverrides[e.period][inc.id] = amt;
+      incomeSet = amt;
+    } else if (e.op === 'extra') {
+      // LINE「收入 紅包 6000」→ 額外收入（格式和 app 裡新增的完全相同）
+      if (base.extraIncomes.some(function(x){ return x.id === o.id; })) return;   // 搬過了
+      var ename = String(e.name || '').slice(0, 40);
+      var eamt = Number(e.amount);
+      if (!ename || !(eamt > 0) || !/^\d{4}-\d{2}-\d{2}$/.test(e.date || '')) return;
+      base.extraIncomes.push({ id: o.id, name: ename, amount: eamt, date: e.date, allocations: [], src: 'line' });
+      extraAdded++;
     } else if (e.op === 'undo' && e.target) {
       var n0 = base.transactions.length + base.cashTransactions.length;
       base.transactions = base.transactions.filter(function(t){ return t.id !== e.target; });
       base.cashTransactions = base.cashTransactions.filter(function(t){ return t.id !== e.target; });
-      if (base.transactions.length + base.cashTransactions.length < n0) undone++;
+      var x0 = base.extraIncomes.length;
+      base.extraIncomes = base.extraIncomes.filter(function(x){ return x.id !== e.target; });   // LINE「取消」也能取消額外收入
+      if (base.transactions.length + base.cashTransactions.length < n0 || base.extraIncomes.length < x0) undone++;
     }
   });
-  return { added: added, undone: undone };
+  return { added: added, undone: undone, income: incomeSet, extra: extraAdded };
 }
 
 function drainInbox() {
@@ -3516,9 +3663,12 @@ function drainInbox() {
     data = r.base;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     renderBankPills(); renderAll();
-    if (r.stat.added || r.stat.undone) {
-      showBackgroundToast('📥 LINE：新增 ' + r.stat.added + ' 筆' + (r.stat.undone ? '、取消 ' + r.stat.undone + ' 筆' : ''));
-    }
+    var parts = [];
+    if (r.stat.added) parts.push('新增 ' + r.stat.added + ' 筆');
+    if (r.stat.extra) parts.push('額外收入 ' + r.stat.extra + ' 筆');
+    if (r.stat.undone) parts.push('取消 ' + r.stat.undone + ' 筆');
+    if (r.stat.income !== null && r.stat.income !== undefined) parts.push('本期收入 $' + Number(r.stat.income).toLocaleString());
+    if (parts.length) showBackgroundToast('📥 LINE：' + parts.join('、'));
     var b = db.batch();
     r.ids.forEach(function(id){ b.delete(inbox.doc(id)); });
     return b.commit();
