@@ -1294,6 +1294,11 @@ function getAllocAmount(allocId, p) {
   // 這個項目「開始存在」之前的期間一律 0。
   // 否則今天新增一筆「定期定額 30000」，會讓 1～6 月全都追溯多出 30000。
   if (a.startOrd && periodOrd(p) < a.startOrd) return 0;
+  // 每月不同的收入：過去與本期「沒填」就是 0，不能拿預設值頂替——
+  // 否則年圖會同時寫「收入未填」和「收入 $40,000」，而且改預設值時過去的收入會跟著變。
+  // 預設值只用來推算「未來」的期間。
+  if (isVariableIncome() && (a.isIncome || a.allocType === 'income')
+      && periodOrd(p) <= periodOrd(realCurrentPeriod())) return 0;
   return a.amount || 0;
 }
 
@@ -2055,6 +2060,12 @@ function periodIncomeEntered(p) {
 function incomeNeedsEntry(p) {
   return isVariableIncome() && !periodIncomeEntered(p) && periodOrd(p) <= periodOrd(realCurrentPeriod());
 }
+// 這一期有沒有任何支出紀錄（判斷是不是「有在用 app 的月份」）
+function periodHasEntries(p) {
+  var k = periodKey(p);
+  function hit(t) { return periodKey(periodOfDate(t.date)) === k; }
+  return (data.transactions || []).some(hit) || (data.cashTransactions || []).some(hit);
+}
 function ensureIncomeAlloc() {
   var a = incomeAlloc();
   if (a) return a;
@@ -2084,7 +2095,14 @@ function savePeriodIncome() {
   showToast('💰 本期收入：$' + v.toLocaleString());
 }
 function setIncomeMode(mode) {
-  data.incomeMode = mode === 'variable' ? 'variable' : 'fixed';
+  var next = mode === 'variable' ? 'variable' : 'fixed';
+  if (next === 'variable' && data.incomeMode !== 'variable') {
+    // 每月固定時，過去的薪水是「預設值」自動帶入的，沒有逐期記錄。
+    // 切成每月不同後，沒記錄的期間會變成「沒填」= 0，整段歷史收入就不見了。
+    // 所以趁還是每月固定時先凍結（本期不凍結，讓他填這期實際收到的）。
+    snapshotHistoryMonths();
+  }
+  data.incomeMode = next;
   save(); renderAll();
 }
 function renderIncomeMode() {
@@ -2107,12 +2125,13 @@ function realCurrentPeriod() {
   return periodOfDate(t.getFullYear() + '-' + pad(t.getMonth() + 1) + '-' + pad(t.getDate()));
 }
 function scroller() { return document.getElementById('app-scroll') || document.scrollingElement || document.documentElement; }
-var APP_VERSION = 'v6.4 連動修正';   // 唯一來源：左上角與「關於」都讀這裡
+var APP_VERSION = 'v6.5 收入歷史';   // 唯一來源：左上角與「關於」都讀這裡
 document.addEventListener('DOMContentLoaded', function(){
   var el = document.getElementById('app-version-label');
   if (el) el.textContent = APP_VERSION;
 });
 var currentSub = null, overviewScrollY = 0;
+var subReturn = null;   // 從某個子頁點連結到另一個子頁時，記住從哪來，返回時回去
 var THEME_NAMES = { jp: '日式', cat: '貓咪', coral: '珊瑚', mint: '薄荷' };
 
 function headerOffset() {
@@ -2122,9 +2141,16 @@ function headerOffset() {
 function openSub(name, focus) {
   var sp = document.getElementById('sp-' + name);
   if (!sp) return;
-  if (!currentSub) overviewScrollY = scroller().scrollTop;
+  if (!currentSub) { overviewScrollY = scroller().scrollTop; subReturn = null; }
+  else if (currentSub !== name) subReturn = currentSub;
   document.querySelectorAll('#page-settings .sp').forEach(function(el){ el.classList.remove('active'); });
   sp.classList.add('active');
+  // 返回鈕寫出「會回到哪裡」：從薪水與分配點進來，就是「‹ 薪水與分配」
+  var bb = sp.querySelector('.sp-back');
+  if (bb) {
+    var t = subReturn && document.querySelector('#sp-' + subReturn + ' .sp-title');
+    bb.textContent = '‹ ' + (t ? t.textContent.replace(/^\S+\s+/, '') : '設定');
+  }
   document.getElementById('page-settings').classList.add('in-sub');
   currentSub = name;
   // 只在記憶體標記「看過了」，不存檔：打開頁面不應該觸發寫入與雲端同步。
@@ -2144,8 +2170,17 @@ function openSub(name, focus) {
     scroller().scrollTop = 0;
   }
 }
-function closeSub() {
+function closeSub(toRoot) {
   if (!currentSub) return;
+  if (subReturn && !toRoot) {
+    // 回到上一個子頁；總覽的捲動位置要保留給之後回總覽時用
+    var back = subReturn, keepY = overviewScrollY;
+    subReturn = null; currentSub = null;
+    openSub(back);
+    overviewScrollY = keepY;
+    return;
+  }
+  subReturn = null;
   document.getElementById('page-settings').classList.remove('in-sub');
   document.querySelectorAll('#page-settings .sp').forEach(function(el){ el.classList.remove('active'); });
   currentSub = null;
@@ -2478,17 +2513,16 @@ function snapshotHistoryMonths() {
   // 一定要用真正的本期：用 getCurrentPeriod() 的話，月總覽切到上一期時，
   // 會把上一期當成「現在」，結果本期被凍結成舊值、上一期反而套到新值
   var p = realCurrentPeriod();
-  var currentKey = periodKey(p);
   var months = {};
   // 用帳務週期的「期間」當 key，不能用日曆月——起始日 25 時，7/10 屬於 6 月期
-  (data.transactions||[]).forEach(function(tx){
-    var k = periodKey(periodOfDate(tx.date));
-    if(k!==currentKey) months[k]=true;
-  });
-  (data.cashTransactions||[]).forEach(function(tx){
-    var k = periodKey(periodOfDate(tx.date));
-    if(k!==currentKey) months[k]=true;
-  });
+  // 只凍結「過去」的期間：本期與未來（例如預先記的分期、預付）都該跟著新的預設值
+  var curOrd = periodOrd(p);
+  function mark(tx) {
+    var pp = periodOfDate(tx.date);
+    if (periodOrd(pp) < curOrd) months[periodKey(pp)] = true;
+  }
+  (data.transactions||[]).forEach(mark);
+  (data.cashTransactions||[]).forEach(mark);
   // 每月不同的人，收入「沒有調整值」代表還沒填，不是「等於預設值」——不能替他凍結成預設值，
   // 否則那幾期的「還沒填」提示會消失、收入被鎖成 0
   var skipIncome = isVariableIncome() ? incomeAlloc() : null;
@@ -2970,7 +3004,9 @@ function renderChart() {
     var tag = isNow ? ' <span style="font-size:10px;font-weight:800;color:var(--matcha);border:1.5px solid var(--matcha);border-radius:6px;padding:1px 6px;margin-left:4px">本月</span>'
             : isFuture ? ' <span style="font-size:10px;color:var(--text3);margin-left:4px">依設定推算</span>' : '';
     // 每月不同、這期收入沒填：收入算 0 會讓「還留著」掉很多，要讓人看得出是資料沒填而不是沒收入
-    if (!isFuture && isVariableIncome() && !periodIncomeEntered({ year: currentChartYear, month: mii + 1 })) {
+    // 只標「有記帳」的月份：還沒開始用 app 的月份本來就沒有收入，不是「沒填」
+    if (!isFuture && isVariableIncome() && periodHasEntries({ year: currentChartYear, month: mii + 1 })
+        && !periodIncomeEntered({ year: currentChartYear, month: mii + 1 })) {
       tag += ' <span style="font-size:10px;font-weight:700;color:#B23A2E;margin-left:4px">收入未填</span>';
     }
     listHtml += '<div class="ov-card" style="' + cardStyle + '">';
@@ -3179,7 +3215,7 @@ function removeCard(el) {
 
 function switchTab(tab) {
   var settingsActive = document.getElementById('page-settings').classList.contains('active');
-  if (tab === 'settings' && settingsActive && currentSub) { closeSub(); return; }
+  if (tab === 'settings' && settingsActive && currentSub) { closeSub(true); return; }   // 底部分頁再點一次：一律回總覽
   // 再點一次目前的分頁 → 捲回頂端（取代點狀態列回頂端，內容區捲動後那個功能就失效了）
   var already = document.getElementById('page-' + tab).classList.contains('active');
   if (already) {
