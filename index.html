@@ -320,6 +320,23 @@ input:focus, select:focus {
 .val-blue  { color: var(--sora); }
 
 /* ── SETTINGS ── */
+.split-toggle{display:block;width:100%;margin:-2px 0 12px;padding:9px;background:none;border:1.5px dashed var(--border);border-radius:10px;font-family:inherit;font-size:13px;font-weight:700;color:var(--matcha);cursor:pointer}
+.split-box{margin:-2px 0 12px;padding:10px 12px;background:var(--matcha-l);border-radius:12px}
+.split-head{display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:800;color:var(--matcha);margin-bottom:8px}
+.split-off{background:none;border:none;font-family:inherit;font-size:12px;color:var(--text3);cursor:pointer;padding:2px 0}
+.split-row{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.split-row input{min-width:0;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:14px;background:var(--surface);color:var(--text)}
+.split-row input[type=text]{flex:2}
+.split-row input[type=number]{flex:1}
+.split-chip{flex:0 0 auto;font-size:10px;font-weight:700;color:var(--text3);border:1px solid var(--border);border-radius:6px;padding:1px 5px}
+.split-x{flex:0 0 auto;background:none;border:none;color:var(--text3);font-size:15px;cursor:pointer;padding:4px}
+.split-tools{display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;color:var(--matcha);margin:2px 0 8px}
+.split-tools button{background:none;border:none;font-family:inherit;font-size:12px;font-weight:700;color:var(--matcha);cursor:pointer;padding:2px 0}
+.split-tools input{width:48px;padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;font-family:inherit;font-size:13px;background:var(--surface);color:var(--text)}
+.split-mine{display:flex;justify-content:space-between;padding-top:8px;border-top:1px solid var(--border);font-size:14px}
+.split-note{color:var(--matcha);font-weight:700}
+.recv-btn{flex:1;padding:7px 0;border:1.5px solid var(--border);border-radius:8px;background:var(--surface);font-family:inherit;font-size:13px;font-weight:700;color:var(--text);cursor:pointer}
+.recv-btn.muted{color:var(--text3)}
 .sp-link{display:block;margin:2px 20px 8px;padding:0;background:none;border:none;font-family:inherit;font-size:12px;font-weight:700;color:var(--matcha);cursor:pointer;text-align:left}
 .seg2{display:flex;border:1.5px solid var(--border);border-radius:9px;overflow:hidden;background:var(--bg2)}
 .seg2 button{flex:1;padding:9px 0;border:none;background:none;font-family:inherit;font-size:14px;font-weight:700;color:var(--text2);cursor:pointer}
@@ -421,6 +438,7 @@ input:focus, select:focus {
 }
 .modal-overlay.open { display: flex; }
 .modal {
+  max-height: 88vh; overflow-y: auto; -webkit-overflow-scrolling: touch;   /* 拆帳人數多時可以捲 */
   background: var(--surface); border-radius: var(--r) var(--r) 0 0;
   width: 100%; max-width: 480px;
   padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
@@ -611,9 +629,10 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
           </div>
           <div class="field" style="flex:1">
             <div class="field-label">金額</div>
-            <input type="number" id="input-amount" placeholder="0" inputmode="decimal">
+            <input type="number" id="input-amount" placeholder="0" inputmode="decimal" oninput="splitRefresh('cc')">
           </div>
         </div>
+        <div id="split-cc"></div>
         <div class="field-row">
           <div class="field">
             <div class="field-label">日期</div>
@@ -642,9 +661,10 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
           </div>
           <div class="field" style="flex:1">
             <div class="field-label">金額</div>
-            <input type="number" id="cash-amount" placeholder="0" inputmode="decimal">
+            <input type="number" id="cash-amount" placeholder="0" inputmode="decimal" oninput="splitRefresh('cash')">
           </div>
         </div>
+        <div id="split-cash"></div>
         <div class="field-row">
           <div class="field">
             <div class="field-label">日期</div>
@@ -1110,8 +1130,9 @@ body.cat-icons .tab-btn .tab-icon-cat svg{width:100%;height:100%;display:block}
     </div>
     <div class="modal-field">
       <div class="modal-field-label">金額</div>
-      <input type="number" id="edit-amount" inputmode="decimal">
+      <input type="number" id="edit-amount" inputmode="decimal" oninput="splitRefresh('edit')">
     </div>
+    <div id="split-edit" style="margin-bottom:12px"></div>
     <div class="modal-field">
       <div class="modal-field-label">日期</div>
       <input type="date" id="edit-date">
@@ -1212,6 +1233,8 @@ function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
 // 統一的資料正規化：load / 雲端載入 / 匯入 / 復原 四條路徑共用同一份，
 // 避免同樣的補預設值邏輯散在多處只改到其中一處（單檔 app 的經典漏改）
 function normalizeData() {
+  (data.transactions || []).forEach(sanitizeSplit);
+  (data.cashTransactions || []).forEach(sanitizeSplit);
   // 收入模式：'fixed' 每月固定（預設）／'variable' 每月不同
   if (data.incomeMode !== 'variable') data.incomeMode = 'fixed';
   var cd = parseInt(data.cycleStartDay, 10);
@@ -1456,6 +1479,33 @@ function typeIcon(t) {
   return '💸';
 }
 
+// ── 拆帳（幫朋友付）─────────────────────────────────────
+function splitPeople(t) { return (t && t.split && Array.isArray(t.split.people)) ? t.split.people : []; }
+// 我的部分 = 刷卡金額 − 朋友的部分（「算我請客」的不扣，因為那部分變成我的支出）
+function txMine(t) {
+  var others = splitPeople(t).reduce(function(s, p){ return s + (p.status === 'waived' ? 0 : (Number(p.amount) || 0)); }, 0);
+  return Math.max(0, (Number(t.amount) || 0) - others);
+}
+function txOthers(t) { return (Number(t.amount) || 0) - txMine(t); }
+function personLabel(p) { return (p && p.name) ? p.name : '朋友'; }
+// 清理拆帳資料：格式不對、金額超過刷卡金額就整個拿掉（只會發生在毀損的資料）
+function sanitizeSplit(t) {
+  if (!t || !t.split) return;
+  var ppl = splitPeople(t).filter(function(p){ return p && Number(p.amount) > 0; }).map(function(p){
+    return { name: String(p.name || '').trim().slice(0, 20), amount: Math.round(Number(p.amount) * 100) / 100,
+             status: (p.status === 'paid' || p.status === 'waived') ? p.status : 'open' };
+  });
+  var sum = ppl.reduce(function(s, p){ return s + p.amount; }, 0);
+  if (!ppl.length || sum > (Number(t.amount) || 0) + 1e-9) { delete t.split; return; }
+  t.split = { people: ppl };
+}
+// 列表上的拆帳說明：「我的 $300・代墊 $700」
+function splitNote(t) {
+  if (!splitPeople(t).length) return '';
+  var o = txOthers(t);
+  return '・<span class="split-note">我的 $' + txMine(t).toLocaleString() + (o > 0 ? '・代墊 $' + o.toLocaleString() : '・我請客') + '</span>';
+}
+
 function getPeriodSummary(p) {
   var txs = data.transactions.filter(function(tx){ return inPeriod(tx, p); });
   var cashTxs = (data.cashTransactions||[]).filter(function(tx){ return inPeriod(tx, p); });
@@ -1488,8 +1538,9 @@ function getPeriodSummary(p) {
   var totalReserve = allocSum('reserve') + extraSum('reserve');  // 💾 預存
 
   // Spending
-  var ccTotal = txs.reduce(function(s,tx){ return s+tx.amount; }, 0);
-  var cashTotal = cashTxs.reduce(function(s,tx){ return s+tx.amount; }, 0);
+  // 「我花了多少」：只算我的部分（幫朋友付的不算我的支出）
+  var ccTotal = txs.reduce(function(s,tx){ return s+txMine(tx); }, 0);
+  var cashTotal = cashTxs.reduce(function(s,tx){ return s+txMine(tx); }, 0);
 
   // 固定支出：v3.2 修正——改用該期間的覆蓋值，否則看歷史月份會顯示「今天」的金額
   var fixedTotal = getFixedExpensesForPeriod(p).filter(function(e){ return e.included!==false; })
@@ -1501,13 +1552,15 @@ function getPeriodSummary(p) {
   var remain = income - totalOut;
 
   var settled = txs.filter(function(t){return t.settled;}).reduce(function(s,t){return s+t.amount;},0);
+  // 刷卡總額（含幫朋友付的）：匯款、對帳用。「我花了多少」請用 ccTotal
+  var ccFull = txs.reduce(function(s,t){ return s+(Number(t.amount)||0); }, 0);
 
   return {
     income: income, salary: salary, extraTotal: extraTotal,
     ccTotal: ccTotal, cashTotal: cashTotal,
     savings: totalSavings, invest: totalInvest, reserve: totalReserve,
     fixedTotal: fixedTotal,
-    remain: remain, settled: settled
+    remain: remain, settled: settled, ccFull: ccFull
   };
 }
 
@@ -1632,7 +1685,7 @@ function renderSearch() {
     var t = x.t, isCash = x.kind === 'cash';
     var pOf = periodOfDate(t.date);
     html += '<div class="tx-item tappable" data-txid="' + esc(String(t.id)) + '" onclick="' + (isCash ? 'openCashEditById' : 'openEditById') + '(this)"><div class="tx-bank-badge" style="background:var(--kinari-l)">' + (isCash ? '💵' : '💳') + '</div>';
-    html += '<div class="tx-info"><div class="tx-name">' + esc(t.name) + '</div><div class="tx-meta">' + t.date.replace(/-/g,'/') + '　' + periodShort(pOf) + ' 期' + (isCash ? '' : '　' + esc(cardNameOfTx(t))) + '</div></div>';
+    html += '<div class="tx-info"><div class="tx-name">' + esc(t.name) + '</div><div class="tx-meta">' + t.date.replace(/-/g,'/') + '　' + periodShort(pOf) + ' 期' + (isCash ? '' : '　' + esc(cardNameOfTx(t))) + splitNote(t) + '</div></div>';
     html += '<div class="tx-amount">$' + (t.amount||0).toLocaleString() + '</div>';
     html += '<span class="tx-chev">›</span></div>';
   });
@@ -1640,7 +1693,14 @@ function renderSearch() {
   box.innerHTML = html;
 }
 
+// 正在拆帳欄位打字時不重畫：LINE 搬入等背景重畫會讓 iPhone 收起鍵盤（打的字本來就存在狀態裡）
+function renderSplitIfIdle(form) {
+  var box = document.getElementById('split-' + form), a = document.activeElement;
+  if (box && a && box.contains(a) && a.tagName === 'INPUT') return;
+  renderSplitEditor(form);
+}
 function renderAll() {
+  renderSplitIfIdle('cc'); renderSplitIfIdle('cash');
   renderAppTitle();
   renderRecord(); renderCash(); renderOverview(); renderSettings();
   refreshNameSuggestions();
@@ -1687,7 +1747,7 @@ function renderRecord() {
           ? '<span style=\'display:block;width:24px;height:24px;line-height:0\'>' + scaleSvg(getCatSvg(txCard.catKey)) + '</span>'
           : txCard.emoji;
         html += '<div class="tx-bank-badge" style="background:' + txCard.color + '">' + badgeInner + '</div>';
-        html += '<div class="tx-info"><div class="tx-name">' + esc(tx.name) + '</div><div class="tx-meta">' + tx.date.slice(5).replace('-','/') + '　' + esc(cardNameOfTx(tx)) + '</div></div>';
+        html += '<div class="tx-info"><div class="tx-name">' + esc(tx.name) + '</div><div class="tx-meta">' + tx.date.slice(5).replace('-','/') + '　' + esc(cardNameOfTx(tx)) + splitNote(tx) + '</div></div>';
         html += '<div class="tx-amount">$' + tx.amount.toLocaleString() + '</div>';
         html += '<span class="tx-chev">›</span>';
         html += '</div>';
@@ -1696,6 +1756,90 @@ function renderRecord() {
     });
   }
   document.getElementById('tx-list').innerHTML = html;
+}
+
+var splitState = { cc: null, cash: null, edit: null };
+var SPLIT_AMOUNT_FIELD = { cc: 'input-amount', cash: 'cash-amount', edit: 'edit-amount' };
+function splitAmount(form) { return parseFloat(document.getElementById(SPLIT_AMOUNT_FIELD[form]).value) || 0; }
+function splitOthersSum(st) {
+  return st.people.reduce(function(s, p){ return s + (p.status === 'waived' ? 0 : (parseFloat(p.amount) || 0)); }, 0);
+}
+function renderSplitEditor(form) {
+  var box = document.getElementById('split-' + form);
+  if (!box) return;
+  var st = splitState[form];
+  if (!st || !st.on) {
+    box.innerHTML = '<button type="button" class="split-toggle" onclick="splitOn(\'' + form + '\')">👥 幫朋友付（拆帳）</button>';
+    return;
+  }
+  var rows = st.people.map(function(p, i){
+    var tag = p.status === 'paid' ? '<span class="split-chip">已收回</span>' : p.status === 'waived' ? '<span class="split-chip">我請客</span>' : '';
+    return '<div class="split-row">'
+      + '<input type="text" placeholder="名字（可空白）" value="' + esc(p.name || '') + '" oninput="splitEdit(\'' + form + '\',' + i + ',\'name\',this.value)">'
+      + '<input type="number" inputmode="decimal" placeholder="金額" value="' + (p.amount === '' || p.amount === undefined ? '' : p.amount) + '" oninput="splitEdit(\'' + form + '\',' + i + ',\'amount\',this.value)">'
+      + tag
+      + '<button type="button" class="split-x" onclick="splitRemove(\'' + form + '\',' + i + ')">✕</button></div>';
+  }).join('');
+  box.innerHTML = '<div class="split-box">'
+    + '<div class="split-head"><span>👥 幫朋友付</span><button type="button" class="split-off" onclick="splitOff(\'' + form + '\')">不拆了</button></div>'
+    + rows
+    + '<div class="split-tools"><button type="button" onclick="splitAdd(\'' + form + '\')">＋ 再加一人</button>'
+    + '<span>平均分給 <input type="number" inputmode="numeric" id="split-n-' + form + '" min="2" max="30" placeholder="人數"> 人 <button type="button" onclick="splitEven(\'' + form + '\')">套用</button></span></div>'
+    + '<div class="split-mine" id="split-mine-' + form + '"></div>'
+    + '</div>';
+  splitRefresh(form);
+}
+// 只更新「我的部分」那一行，不重畫整個區塊（避免輸入時游標跳掉）
+function splitRefresh(form) {
+  var el = document.getElementById('split-mine-' + form);
+  var st = splitState[form];
+  if (!el || !st || !st.on) return;
+  var amt = splitAmount(form), others = splitOthersSum(st), mine = amt - others;
+  el.innerHTML = mine < 0
+    ? '<span style="color:#B23A2E">⚠️ 朋友的部分 $' + others.toLocaleString() + ' 超過刷卡金額</span>'
+    : '<span>我的部分</span><b>$' + (Math.round(mine * 100) / 100).toLocaleString() + '</b>';
+}
+function splitOn(form) { splitState[form] = { on: true, people: [{ name: '', amount: '', status: 'open' }] }; renderSplitEditor(form); }
+function splitOff(form) { splitState[form] = null; renderSplitEditor(form); }
+function splitAdd(form) { splitState[form].people.push({ name: '', amount: '', status: 'open' }); renderSplitEditor(form); }
+function splitRemove(form, i) {
+  var st = splitState[form]; st.people.splice(i, 1);
+  if (!st.people.length) splitState[form] = null;
+  renderSplitEditor(form);
+}
+function splitEdit(form, i, field, v) { splitState[form].people[i][field] = v; if (field === 'amount') splitRefresh(form); }
+// 平均分：每人 = 刷卡金額 ÷ 人數（取整數），除不盡的零頭算我的
+function splitEven(form) {
+  var n = parseInt(document.getElementById('split-n-' + form).value, 10);
+  var amt = splitAmount(form);
+  if (!(n >= 2 && n <= 30)) { showToast('⚠️ 人數要在 2～30 之間'); return; }
+  if (!(amt > 0)) { showToast('⚠️ 請先填刷卡金額'); return; }
+  var each = Math.floor(amt / n);
+  if (each < 1) { showToast('⚠️ 金額太小，沒辦法平均分給 ' + n + ' 人'); return; }
+  var old = splitState[form].people;
+  var ppl = [];
+  for (var i = 0; i < n - 1; i++) ppl.push({ name: (old[i] && old[i].name) || '', amount: each, status: (old[i] && old[i].status) || 'open' });
+  splitState[form].people = ppl;
+  renderSplitEditor(form);
+}
+// 讀出拆帳資料並檢查；回傳 { split: null|{people}, error: null|'訊息' }
+function readSplit(form, amount) {
+  var st = splitState[form];
+  if (!st || !st.on) return { split: null };
+  var ppl = [];
+  for (var i = 0; i < st.people.length; i++) {
+    var p = st.people[i];
+    var nm = String(p.name || '').trim(), a = parseFloat(p.amount);
+    if (!nm && (p.amount === '' || p.amount === undefined)) continue;   // 整列空白就略過
+    var who = nm ? '「' + nm + '」' : '第 ' + (i + 1) + ' 位';
+    if (p.amount === '' || p.amount === undefined || isNaN(a)) return { error: '請填' + who + '的金額' };
+    if (!(a > 0)) return { error: who + '的金額要大於 0' };
+    ppl.push({ name: nm.slice(0, 20), amount: a, status: p.status || 'open' });
+  }
+  if (!ppl.length) return { split: null };
+  var others = ppl.reduce(function(s, p){ return s + (p.status === 'waived' ? 0 : p.amount); }, 0);
+  if (others > amount + 1e-9) return { error: '朋友的部分 $' + others.toLocaleString() + ' 超過刷卡金額 $' + amount.toLocaleString() };
+  return { split: { people: ppl } };
 }
 
 function addTransaction() {
@@ -1707,12 +1851,17 @@ function addTransaction() {
   if (!date) { showToast('⚠️ 請選擇日期'); return; }
   var selCard = cardById(selectedCardId);
   if (!selCard) { showToast('⚠️ 請先選擇信用卡'); return; }
+  var sp = readSplit('cc', amount);
+  if (sp.error) { showToast('⚠️ ' + sp.error); return; }
   // cardId 是真正的參照；bank 只是名稱快照，卡被刪掉時拿來顯示
-  data.transactions.push({ id: mkId(), name: name, amount: amount, date: date, cardId: selCard.id, bank: selCard.name, settled: false });
+  var ntx = { id: mkId(), name: name, amount: amount, date: date, cardId: selCard.id, bank: selCard.name, settled: false };
+  if (sp.split) ntx.split = sp.split;
+  data.transactions.push(ntx);
   save();
   document.getElementById('input-name').value = '';
   document.getElementById('input-amount').value = '';
-  showToast(addedToast('✅ 已記：' + name + ' $' + amount, date));
+  splitOff('cc');
+  showToast(addedToast('✅ 已記：' + name + ' $' + amount + (sp.split ? '（我的 $' + txMine(ntx).toLocaleString() + '）' : ''), date));
   renderAll();
 }
 // 若這筆日期不屬於目前檢視的期間，明講它去了哪一期（否則會「記了卻看不到」）
@@ -1748,6 +1897,10 @@ function openEditTx(id, kind) {
   document.getElementById('edit-date').value = tx.date;
   document.getElementById('edit-modal-title').textContent =
     (kind === 'cash') ? '✏️ 編輯現金支出' : '✏️ 編輯支出';
+  // 帶入拆帳（保留每個人已收回／請客的狀態）
+  var ppl = splitPeople(tx);
+  splitState.edit = ppl.length ? { on: true, people: ppl.map(function(p){ return { name: p.name, amount: p.amount, status: p.status || 'open' }; }) } : null;
+  renderSplitEditor('edit');
   // 用 CSS 顯示切換，不重組 HTML
   var bankField = document.getElementById('edit-bank-field');
   if (bankField) bankField.style.display = (kind === 'cash') ? 'none' : '';
@@ -1789,7 +1942,10 @@ function saveEdit() {
   if (!name) { showToast('⚠️ 品項不能空白'); return; }
   if (!(amount > 0)) { showToast('⚠️ 金額要大於 0'); return; }
   if (!date) { showToast('⚠️ 請選擇日期'); return; }
+  var sp = readSplit('edit', amount);
+  if (sp.error) { showToast('⚠️ ' + sp.error); return; }
   tx.name = name; tx.amount = amount; tx.date = date;
+  if (sp.split) tx.split = sp.split; else delete tx.split;
   if (editingKind === 'card') {
     var ec = cardById(editCardId);
     if (ec) { tx.cardId = ec.id; tx.bank = ec.name; }
@@ -1808,27 +1964,34 @@ function addCash() {
   if (!name) { showToast('⚠️ 請輸入品項名稱'); return; }
   if (!amount||amount<=0) { showToast('⚠️ 請輸入金額'); return; }
   if (!date) { showToast('⚠️ 請選擇日期'); return; }
-  data.cashTransactions.push({ id: mkId(), name: name, amount: amount, date: date });
+  var sp = readSplit('cash', amount);
+  if (sp.error) { showToast('⚠️ ' + sp.error); return; }
+  var ntx = { id: mkId(), name: name, amount: amount, date: date };
+  if (sp.split) ntx.split = sp.split;
+  data.cashTransactions.push(ntx);
   save();
   document.getElementById('cash-name').value = '';
   document.getElementById('cash-amount').value = '';
-  showToast(addedToast('✅ 已記現金：' + name + ' $' + amount, date));
+  splitOff('cash');
+  showToast(addedToast('✅ 已記現金：' + name + ' $' + amount + (sp.split ? '（我的 $' + txMine(ntx).toLocaleString() + '）' : ''), date));
   renderAll();
 }
 function renderCash() {
   var p = getCurrentPeriod();
   var txs = (data.cashTransactions||[]).filter(function(tx){ return inPeriod(tx,p); });
   txs.sort(function(a,b){ return b.date.localeCompare(a.date); });
-  var total = txs.reduce(function(s,tx){return s+tx.amount;},0);
+  // 「現金支出」在全 app 都代表「我花了多少」（和月總覽一致）；有幫朋友付時另外註明實付
+  var total = txs.reduce(function(s,tx){return s+txMine(tx);},0);
+  var paidOut = txs.reduce(function(s,tx){return s+tx.amount;},0);
   var html = '';
   if (txs.length === 0) {
     html = '<div class="empty-state"><div class="empty-icon">💵</div><div class="empty-text">還沒有現金記帳</div></div>';
   } else {
     html += '<div class="week-block" style="margin-top:10px">';
-    html += '<div class="week-header"><div class="week-left"><div class="week-label">💵 本期現金支出</div></div><div class="week-total">$' + total.toLocaleString() + '</div></div>';
+    html += '<div class="week-header"><div class="week-left"><div class="week-label">💵 本期現金支出</div>' + (paidOut !== total ? '<div class="split-note" style="font-size:11px;margin-top:2px">實付 $' + paidOut.toLocaleString() + '・含代墊 $' + (paidOut - total).toLocaleString() + '</div>' : '') + '</div><div class="week-total">$' + total.toLocaleString() + '</div></div>';
     txs.forEach(function(tx){
       html += '<div class="tx-item tappable" data-txid="' + esc(String(tx.id)) + '" onclick="openCashEditById(this)"><div class="tx-bank-badge" style="background:var(--kinari-l)">💵</div>';
-      html += '<div class="tx-info"><div class="tx-name">' + esc(tx.name) + '</div><div class="tx-meta">' + tx.date.slice(5).replace('-','/') + '</div></div>';
+      html += '<div class="tx-info"><div class="tx-name">' + esc(tx.name) + '</div><div class="tx-meta">' + tx.date.slice(5).replace('-','/') + splitNote(tx) + '</div></div>';
       html += '<div class="tx-amount">$' + tx.amount.toLocaleString() + '</div>';
       html += '<span class="tx-chev">›</span></div>';
     });
@@ -1839,6 +2002,62 @@ function renderCash() {
 
 // ── OVERVIEW ─────────────────────────────────────────
 function changePeriod(delta) { currentPeriodOffset += delta; syncDateInputs(); renderAll(); }
+
+// ── 代墊待收：跨期間列出還沒收回的，依人分組 ──────────────────
+function openReceivables() {
+  var list = [];
+  [['card', data.transactions || []], ['cash', data.cashTransactions || []]].forEach(function(pair){
+    pair[1].forEach(function(t){
+      splitPeople(t).forEach(function(p, i){
+        if (p.status === 'open') list.push({ kind: pair[0], tx: t, idx: i, person: p });
+      });
+    });
+  });
+  list.sort(function(a, b){ return a.tx.date < b.tx.date ? -1 : a.tx.date > b.tx.date ? 1 : 0; });
+  return list;
+}
+function renderReceivables() {
+  var list = openReceivables();
+  if (!list.length) return '';
+  var groups = {}, order = [];
+  list.forEach(function(r){ var k = personLabel(r.person); if (!groups[k]) { groups[k] = []; order.push(k); } groups[k].push(r); });
+  var total = list.reduce(function(s, r){ return s + r.person.amount; }, 0);
+  var out = '<div class="ov-card" style="margin-top:10px;border:1.5px solid var(--matcha)">';
+  out += '<div class="ov-card-header"><div class="ov-card-title">👥 代墊待收</div><div class="ov-card-total">$' + total.toLocaleString() + '</div></div>';
+  order.forEach(function(name){
+    var g = groups[name], sum = g.reduce(function(s, r){ return s + r.person.amount; }, 0);
+    out += '<div style="padding:8px 14px 4px;display:flex;justify-content:space-between;font-weight:800;font-size:14px"><span>' + esc(name) + '</span><span>$' + sum.toLocaleString() + '</span></div>';
+    g.forEach(function(r){
+      var arg = "'" + r.kind + "','" + esc(String(r.tx.id)).replace(/'/g, '') + "'," + r.idx;
+      out += '<div style="padding:4px 14px 10px">'
+        + '<div style="font-size:12px;color:var(--text3);margin-bottom:6px">' + esc(r.tx.name) + ' ' + r.tx.date.slice(5).replace('-', '/') + '　$' + r.person.amount.toLocaleString() + '</div>'
+        + '<div style="display:flex;gap:6px">'
+        + '<button class="recv-btn" onclick="markSplit(' + arg + ',\'paid\')">已收回</button>'
+        + '<button class="recv-btn muted" onclick="markSplit(' + arg + ',\'waived\')">算我請客</button>'
+        + '</div></div>';
+    });
+  });
+  out += '</div>';
+  return out;
+}
+// 標記已收回／算我請客，可以復原
+function markSplit(kind, id, idx, status) {
+  var arr = kind === 'cash' ? data.cashTransactions : data.transactions;
+  var t = arr.find(function(x){ return String(x.id) === String(id); });
+  if (!t || !splitPeople(t)[idx]) return;
+  var p = t.split.people[idx], prev = p.status;
+  p.status = status;
+  save(); renderAll();
+  var who = currentUser ? currentUser.uid : null;
+  var msg = status === 'paid'
+    ? personLabel(p) + ' $' + p.amount.toLocaleString() + ' 已收回'
+    : personLabel(p) + ' $' + p.amount.toLocaleString() + ' 算你請客（計入你的支出）';
+  showUndoToast(msg, function(){
+    if ((currentUser ? currentUser.uid : null) !== who) return;
+    var t2 = (kind === 'cash' ? data.cashTransactions : data.transactions).find(function(x){ return String(x.id) === String(id); });
+    if (t2 && splitPeople(t2)[idx]) { t2.split.people[idx].status = prev; save(); renderAll(); showToast('已復原'); }
+  });
+}
 
 function renderOverview() {
   var p = getCurrentPeriod();
@@ -1971,7 +2190,7 @@ function renderOverview() {
   html += '<div class="ov-card-header"><div class="ov-card-title">💳 信用卡支出</div><div class="ov-card-total">$' + s.ccTotal.toLocaleString() + '</div></div>';
   if (settleEnabled()) {
     html += '<div class="ov-row"><div class="ov-row-name">✅ 已匯' + esc(settleBankName()) + '</div><div class="ov-row-val val-green">$' + s.settled.toLocaleString() + '</div></div>';
-    html += '<div class="ov-row"><div class="ov-row-name">🕐 待匯</div><div class="ov-row-val val-gold">$' + (s.ccTotal-s.settled).toLocaleString() + '</div></div>';
+    html += '<div class="ov-row"><div class="ov-row-name">🕐 待匯</div><div class="ov-row-val val-gold">$' + (s.ccFull-s.settled).toLocaleString() + '</div></div>';
   }
   // 依 cardId 分組。卡被刪除的帳另列一行，確保各卡加總永遠等於信用卡總額。
   var periodTx = data.transactions.filter(function(t){ return inPeriod(t,p); });
@@ -1989,6 +2208,17 @@ function renderOverview() {
     html += '<div class="ov-row"><div class="ov-row-name" style="color:var(--text3)">💳 已刪除的卡</div><div class="ov-row-val" style="color:var(--text3)">$' + orphanTotal.toLocaleString() + '</div></div>';
   }
   html += '</div>';
+
+  // 信用卡卡片補一行對帳：各卡加總是刷卡金額，其中代墊的不算我的支出
+  var ccOthers = periodTx.reduce(function(s, t){ return s + txOthers(t); }, 0);
+  if (ccOthers > 0) {
+    var cardEnd = html.lastIndexOf('</div>');
+    html = html.slice(0, cardEnd)
+      + '<div class="ov-row"><div class="ov-row-name" style="color:var(--matcha)">👥 代墊（不算你的支出）</div><div class="ov-row-val" style="color:var(--matcha)">−$' + ccOthers.toLocaleString() + '</div></div>'
+      + '<div class="ov-row" style="border-top:1px solid var(--border)"><div class="ov-row-name" style="font-weight:700">你的信用卡支出</div><div class="ov-row-val" style="font-weight:700">$' + s.ccTotal.toLocaleString() + '</div></div>'
+      + html.slice(cardEnd);
+  }
+  html += renderReceivables();
 
   // 依「多常變動」重新排序：實際支出（每天在變）→ 薪資分配（每月）→ 固定預算（參考）→ 額外收入（偶爾）
   html = html.slice(0, _mHero)
@@ -2125,7 +2355,7 @@ function realCurrentPeriod() {
   return periodOfDate(t.getFullYear() + '-' + pad(t.getMonth() + 1) + '-' + pad(t.getDate()));
 }
 function scroller() { return document.getElementById('app-scroll') || document.scrollingElement || document.documentElement; }
-var APP_VERSION = 'v6.5 收入歷史';   // 唯一來源：左上角與「關於」都讀這裡
+var APP_VERSION = 'v6.7 拆帳修正';   // 唯一來源：左上角與「關於」都讀這裡
 document.addEventListener('DOMContentLoaded', function(){
   var el = document.getElementById('app-version-label');
   if (el) el.textContent = APP_VERSION;
@@ -3624,13 +3854,18 @@ function applyInboxOps(base, ops) {
       var name = String(e.name || '').slice(0, 40);
       var amount = Number(e.amount);
       if (!name || !(amount > 0) || !/^\d{4}-\d{2}-\d{2}$/.test(e.date || '')) return;
+      var lineSplit = (e.split && Array.isArray(e.split.people)) ? { people: e.split.people.map(function(p){ return { name: p.name, amount: p.amount, status: 'open' }; }) } : null;
       if (e.kind === 'cash') {
-        base.cashTransactions.push({ id: o.id, name: name, amount: amount, date: e.date, src: 'line' });
+        var ctx = { id: o.id, name: name, amount: amount, date: e.date, src: 'line' };
+        if (lineSplit) { ctx.split = lineSplit; sanitizeSplit(ctx); }
+        base.cashTransactions.push(ctx);
       } else {
         // 記帳到搬入之間卡片被刪了 → 帳照樣保留，以「已刪除的卡」顯示
         var stillThere = base.cards.some(function(c){ return c.id == e.cardId; });
-        base.transactions.push({ id: o.id, name: name, amount: amount, date: e.date,
-          cardId: stillThere ? e.cardId : null, bank: e.cardName || '', settled: false, src: 'line' });
+        var ttx = { id: o.id, name: name, amount: amount, date: e.date,
+          cardId: stillThere ? e.cardId : null, bank: e.cardName || '', settled: false, src: 'line' };
+        if (lineSplit) { ttx.split = lineSplit; sanitizeSplit(ttx); }
+        base.transactions.push(ttx);
       }
       added++;
     } else if (e.op === 'income') {
